@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+client/dist/
+
+# Build
+server/target/
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+*.log
