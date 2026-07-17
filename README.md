@@ -21,7 +21,7 @@ Sem pressa, sem escopo fechado — a ideia é ir descobrindo o que faz sentido c
 
 Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](./docs/requirements.md) com problema, fluxo e critérios de aceite. Nada de burocracia antes da hora.
 
-**Requisitos:** [docs/requirements.md](./docs/requirements.md) — o que já existe (RF-01 a RF-03) e modelo para o próximo.
+**Requisitos:** [docs/requirements.md](./docs/requirements.md) — MVP (RF-01 a RF-14); RF-01 a RF-03 concluídos.
 
 ---
 

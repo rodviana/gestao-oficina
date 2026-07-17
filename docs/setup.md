@@ -80,7 +80,7 @@ O que acontece:
 - Sobe o **PostgreSQL**.
 - Na **primeira vez** (banco novo), cria tabelas, procedures e o usuário admin.
 
-A primeira vez pode demorar uns minutos (baixar imagens + build).
+A primeira vez pode demorar uns minutos (baixar imagens + build). Funciona em Mac (Intel e Apple Silicon), Windows e Linux.
 
 **Rodar em segundo plano** (libera o terminal):
 
@@ -173,6 +173,14 @@ Esses valores vêm do `docker-compose.yml`. Se mudar lá, muda na ferramenta tam
 ---
 
 ## Deu ruim? Coisas comuns
+
+### `Failed to read artifact descriptor` / Maven BUILD FAILURE no Docker
+
+Rede flaky ao baixar dependências do Maven Central. Roda de novo:
+
+```bash
+docker compose up --build --force-recreate --remove-orphans
+```
 
 ### `dockerDesktopLinuxEngine` pipe not found (Windows)
 
