@@ -10,8 +10,8 @@ export function AuthProvider({ children }) {
     () => ({
       customer,
       isAuthenticated: Boolean(customer),
-      login(loginId, password) {
-        const result = doLogin(loginId, password);
+      async login(loginId, password) {
+        const result = await doLogin(loginId, password);
         if (result.ok) setCustomer(result.customer);
         return result;
       },

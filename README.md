@@ -40,14 +40,16 @@ Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](
 
 ```
 gestao-oficina/
+├── database/                   # Scripts SQL e inicialização do PostgreSQL
 ├── docs/                       # Documentação
-├── server/                     # API Java (Spring Boot)
+├── server-admin/               # API Java do sistema interno (Spring Boot, porta 8080)
+├── server-web/                 # API Java do portal do cliente (Spring Boot, porta 8081)
 ├── gestao-oficina-admin-web/   # Sistema interno da oficina (staff)
 ├── gestao-oficina-web/         # Portal do cliente (conta + histórico + consulta rápida)
 └── docker-compose.yml
 ```
 
-Dentro do server, a ideia é simples: **controller** recebe a requisição, **service** pensa na regra, **repository** fala com o banco.
+Dentro de cada server, a ideia é simples: **controller** recebe a requisição, **service** pensa na regra, **repository** fala com o banco.
 
 ```
 controller/  →  service/  →  repository/

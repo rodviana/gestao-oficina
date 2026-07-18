@@ -1,38 +1,44 @@
-import { TRACKING_DATA } from './mock';
-import { normalizePhone } from './labels';
-
 const SESSION_KEY = 'gestao-oficina-portal-session';
 
-function publicCustomer(customer) {
-  if (!customer) return null;
-  const { password: _pw, ...safe } = customer;
-  return safe;
-}
+const API_URL = import.meta.env.VITE_API_URL ?? '';
 
-export function login(loginId, password) {
-  const id = String(loginId || '').trim().toLowerCase();
+export async function login(loginId, password) {
+  const id = String(loginId || '').trim();
   const pw = String(password || '');
   if (!id || !pw) {
     return { ok: false, error: 'Informe e-mail (ou telefone) e senha.' };
   }
 
-  const digits = normalizePhone(id);
-  const customer = TRACKING_DATA.customers.find((c) => {
-    const emailMatch = c.email.toLowerCase() === id;
-    const phoneMatch =
-      digits.length >= 8 &&
-      (normalizePhone(c.phone) === digits ||
-        normalizePhone(c.phone).endsWith(digits.slice(-8)));
-    return emailMatch || phoneMatch;
-  });
-
-  if (!customer || customer.password !== pw) {
-    return { ok: false, error: 'E-mail/telefone ou senha incorretos.' };
+  let response;
+  let body = {};
+  try {
+    response = await fetch(`${API_URL}/api/v1/web/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: id, password: pw }),
+    });
+    body = await response.json().catch(() => ({}));
+  } catch {
+    return { ok: false, error: 'Não foi possível conectar ao servidor.' };
   }
 
-  const session = { customerId: customer.id, at: new Date().toISOString() };
+  if (!response.ok || body.success === false) {
+    return { ok: false, error: body.message || 'E-mail/telefone ou senha incorretos.' };
+  }
+
+  const data = body.data || {};
+  const customer = {
+    // Orders/vehicles still come from mock data keyed by 'c-<n>'; the seed
+    // order matches the mock customers, so we bridge the id here for now.
+    id: `c-${data.customerId}`,
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+  };
+
+  const session = { token: data.token, customer, at: new Date().toISOString() };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  return { ok: true, customer: publicCustomer(customer) };
+  return { ok: true, customer };
 }
 
 export function logout() {
@@ -44,8 +50,17 @@ export function getSessionCustomer() {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const session = JSON.parse(raw);
-    const customer = TRACKING_DATA.customers.find((c) => c.id === session.customerId);
-    return publicCustomer(customer);
+    return session.customer || null;
+  } catch {
+    return null;
+  }
+}
+
+export function getSessionToken() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw).token || null;
   } catch {
     return null;
   }

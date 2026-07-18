@@ -9,13 +9,16 @@ export default function LoginPage() {
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   if (isAuthenticated) return <Navigate to="/conta" replace />;
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    const result = login(loginId, password);
+    setSubmitting(true);
+    const result = await login(loginId, password);
+    setSubmitting(false);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -73,8 +76,8 @@ export default function LoginPage() {
             />
           </div>
           {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-          <button type="submit" className="btn-primary w-full">
-            Entrar
+          <button type="submit" className="btn-primary w-full" disabled={submitting}>
+            {submitting ? 'Entrando…' : 'Entrar'}
           </button>
         </form>
       </div>

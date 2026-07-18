@@ -193,14 +193,18 @@ try {
 
 ## Banco de dados
 
-Scripts em `server/src/main/resources/database/`:
+Scripts centralizados em `database/`:
+
+- `database/admin/` — usuários internos e administração
+- `database/web/` — clientes do portal
+- `database/init/01-migrate.sh` — inicialização do PostgreSQL
 
 - `V001_schema_users.sql` — tabelas
 - `V002_seed_admin.sql` — usuário admin inicial
 - `P_*.sql` — stored procedures (lógica de consulta fica aqui)
 - `V000_drop_all.sql` — reset manual se precisar zerar tudo
 
-No Docker, na **primeira vez** que o Postgres sobe, o script `docker/postgres/init/01-migrate.sh` roda tudo na ordem certa.
+No Docker, na **primeira vez** que o Postgres sobe, o script `database/init/01-migrate.sh` roda tudo na ordem certa.
 
 Acesso ao banco: **JDBC + procedures** (sem JPA/Hibernate).
 
