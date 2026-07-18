@@ -1,27 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { mockLogin, MOCK_LOGIN_PRESETS } from '../mock/auth';
+import { login as apiLogin } from '../services/authService';
 import { FieldLabel, TextInput } from '../components/ui/PageElements';
 import { notifyToast } from '../components/ToastProvider';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login: saveSession } = useAuth();
-  const [email, setEmail] = useState('admin@oficina.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  function enter(sessionData) {
-    saveSession(sessionData);
-    navigate('/', { replace: true });
-  }
-
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setLoading(true);
     try {
-      enter(mockLogin(email, password));
+      const sessionData = await apiLogin(email, password);
+      saveSession(sessionData);
+      navigate('/', { replace: true });
     } catch (err) {
       notifyToast({
         type: 'error',
@@ -31,19 +28,6 @@ export default function Login() {
       });
     } finally {
       setLoading(false);
-    }
-  }
-
-  function handlePreset(preset) {
-    try {
-      enter(mockLogin(preset.email, preset.password));
-    } catch (err) {
-      notifyToast({
-        type: 'error',
-        title: 'Atenção',
-        message: err.message,
-        duration: 4000,
-      });
     }
   }
 
@@ -72,7 +56,7 @@ export default function Login() {
             style={{ background: 'radial-gradient(circle, rgba(232,93,4,0.55), transparent 70%)' }}
           />
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-signal-muted">
-            Protótipo MVP
+            Gestão Oficina
           </p>
           <h1 className="mt-4 font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
             Gestão
@@ -80,8 +64,7 @@ export default function Login() {
             Oficina
           </h1>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-ink-300">
-            Kanban da pista, OS, clientes e veículos — tudo mockado para validar o fluxo com a
-            oficina.
+            Kanban da pista, OS, clientes e veículos conectados ao backend admin.
           </p>
           <ul className="mt-8 space-y-2 text-sm text-ink-300">
             <li className="flex items-center gap-2">
@@ -98,23 +81,9 @@ export default function Login() {
 
         <div className="p-8 md:p-10">
           <h2 className="font-display text-2xl font-bold text-ink-900">Entrar</h2>
-          <p className="mt-1 mb-5 text-sm text-ink-500">Escolha um perfil ou use e-mail e senha.</p>
+          <p className="mt-1 mb-5 text-sm text-ink-500">Use seu e-mail e senha cadastrados.</p>
 
-          <div className="mb-6 grid gap-2">
-            {MOCK_LOGIN_PRESETS.map((preset) => (
-              <button
-                key={preset.email}
-                type="button"
-                className="btn-secondary justify-between !py-3"
-                onClick={() => handlePreset(preset)}
-              >
-                <span>Entrar como {preset.label}</span>
-                <span className="text-xs font-medium text-ink-400">→</span>
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={handleSubmit} noValidate className="space-y-4 border-t border-ink-100 pt-6">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div>
               <FieldLabel htmlFor="email">E-mail</FieldLabel>
               <TextInput

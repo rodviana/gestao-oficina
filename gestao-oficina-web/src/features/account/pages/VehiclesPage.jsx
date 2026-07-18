@@ -2,7 +2,15 @@ import { useCustomerPortfolio } from '../hooks/useCustomerPortfolio';
 import VehicleCard from '../components/VehicleCard';
 
 export default function VehiclesPage() {
-  const { vehicles } = useCustomerPortfolio();
+  const { vehicles, loading, error } = useCustomerPortfolio();
+
+  if (loading) {
+    return <p className="text-center text-sm text-shop-500">Carregando veículos…</p>;
+  }
+
+  if (error) {
+    return <p className="text-center text-sm text-red-700">{error}</p>;
+  }
 
   return (
     <div>

@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
-import { WorkOrderStatus } from '../mock/labels';
+import { WorkOrderStatus } from '../constants/labels';
 import { EmptyState, TextInput } from '../components/ui/PageElements';
 import KanbanBoard from '../components/kanban/KanbanBoard';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import { quickSearch } from '../services/searchService';
+import { fetchAllWorkOrders, updateWorkOrderStatus } from '../services/workOrderService';
+import { fetchVehiclesByCustomer } from '../services/vehicleService';
+import { showSuccess } from '../services/apiClient';
 
 const ACTIVE = [
   WorkOrderStatus.OPEN,
@@ -15,15 +18,64 @@ const ACTIVE = [
 ];
 
 export default function Home() {
-  const store = useMockStore();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [customerVehicles, setCustomerVehicles] = useState({});
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoadingOrders(true);
+      try {
+        const all = await fetchAllWorkOrders(session.token, { pageSize: 100 });
+        if (!cancelled) setOrders(all);
+      } catch {
+        if (!cancelled) setOrders([]);
+      } finally {
+        if (!cancelled) setLoadingOrders(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
+
+  useEffect(() => {
+    if (!session?.token || !searched?.customers?.length) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      const entries = await Promise.all(
+        searched.customers.map(async (customer) => {
+          if (customer.vehicles?.length) {
+            return [customer.id, customer.vehicles];
+          }
+          try {
+            const vehicles = await fetchVehiclesByCustomer(session.token, customer.id);
+            return [customer.id, vehicles];
+          } catch {
+            return [customer.id, []];
+          }
+        }),
+      );
+      if (!cancelled) setCustomerVehicles(Object.fromEntries(entries));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, searched]);
 
   const activeOrders = useMemo(
-    () => store.listWorkOrders().filter((wo) => ACTIVE.includes(wo.status)),
-    [store],
+    () => orders.filter((wo) => ACTIVE.includes(wo.status)),
+    [orders],
   );
 
   const canCreate = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
@@ -33,21 +85,34 @@ export default function Home() {
   const openCount = activeOrders.filter((w) => w.status === WorkOrderStatus.OPEN).length;
   const firstName = session?.name?.split(' ')[0] || 'equipe';
 
-  function handleSearch(event) {
+  async function handleSearch(event) {
     event.preventDefault();
     const q = query.trim();
     if (!q) {
       setSearched(null);
       return;
     }
-    setSearched(store.quickSearch(q));
-    setSearchOpen(true);
+    try {
+      const results = await quickSearch(session.token, q);
+      setSearched(results);
+      setSearchOpen(true);
+    } catch {
+      setSearched({ customers: [], vehicles: [] });
+      setSearchOpen(true);
+    }
   }
 
   function clearSearch() {
     setQuery('');
     setSearched(null);
     setSearchOpen(false);
+    setCustomerVehicles({});
+  }
+
+  async function handleStatusChange(id, status) {
+    await updateWorkOrderStatus(session.token, id, status);
+    setOrders((prev) => prev.map((wo) => (wo.id === id ? { ...wo, status, statusCode: status } : wo)));
+    showSuccess('Status atualizado.');
   }
 
   return (
@@ -138,7 +203,7 @@ export default function Home() {
                       >
                         {c.name}
                       </Link>
-                      <p className="text-xs text-ink-500">Tel. {c.phone}</p>
+                      <p className="text-xs text-ink-500">Tel. {c.phone || '—'}</p>
                     </div>
                     {canCreate && (
                       <Link
@@ -150,7 +215,7 @@ export default function Home() {
                     )}
                   </div>
                   <ul className="mt-2 space-y-1.5">
-                    {store.listVehicles({ customerId: c.id }).map((v) => (
+                    {(customerVehicles[c.id] || c.vehicles || []).map((v) => (
                       <li
                         key={v.id}
                         className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 text-sm ring-1 ring-ink-100"
@@ -180,11 +245,17 @@ export default function Home() {
         )}
       </section>
 
-      <KanbanBoard
-        title="Quadro da pista"
-        canCreate={canCreate}
-        compactHeader
-      />
+      {loadingOrders ? (
+        <p className="text-sm text-ink-500">Carregando quadro…</p>
+      ) : (
+        <KanbanBoard
+          title="Quadro da pista"
+          canCreate={canCreate}
+          compactHeader
+          orders={activeOrders}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </div>
   );
 }

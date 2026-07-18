@@ -1,14 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import {
   PaymentStatusLabel,
   WorkOrderStatusLabel,
   WorkOrderStatusTone,
   formatDate,
   formatMoney,
-} from '../mock/labels';
-import { workOrderTotal } from '../mock/seed';
+} from '../constants/labels';
+import { workOrderTotal } from '../utils/workOrderUtils';
 import {
   Card,
   EmptyState,
@@ -21,31 +20,82 @@ import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { showSuccess } from '../services/apiClient';
+import { fetchAllPages } from '../services/pageUtils';
+import { fetchCustomer, fetchCustomers } from '../services/customerService';
+import {
+  fetchVehicle,
+  fetchVehicleHistory,
+  updateVehicle,
+} from '../services/vehicleService';
 
 export default function VehicleDetail() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const store = useMockStore();
   const navigate = useNavigate();
   const { session } = useAuth();
   const canEdit = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
 
-  const vehicle = store.getVehicle(id);
-  const customer = vehicle ? store.getCustomer(vehicle.customerId) : null;
+  const [vehicle, setVehicle] = useState(null);
+  const [customer, setCustomer] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const editing = searchParams.get('edit') === '1' && canEdit;
-  const customers = store.listCustomers();
 
-  const orders = useMemo(
-    () => (vehicle ? store.listWorkOrders({ vehicleId: vehicle.id }) : []),
-    [store, vehicle],
-  );
-
-  const [customerId, setCustomerId] = useState(vehicle?.customerId || '');
-  const [plate, setPlate] = useState(vehicle?.plate || '');
-  const [brand, setBrand] = useState(vehicle?.brand || '');
-  const [model, setModel] = useState(vehicle?.model || '');
-  const [year, setYear] = useState(vehicle?.year ? String(vehicle.year) : '');
+  const [customerId, setCustomerId] = useState('');
+  const [plate, setPlate] = useState('');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [year, setYear] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const [vehicleData, history, customerList] = await Promise.all([
+          fetchVehicle(session.token, id),
+          fetchVehicleHistory(session.token, id),
+          fetchAllPages((page, pageSize) => fetchCustomers(session.token, { page, pageSize })),
+        ]);
+        if (cancelled) return;
+
+        const customerData = vehicleData.customerId
+          ? await fetchCustomer(session.token, vehicleData.customerId)
+          : null;
+
+        setVehicle(vehicleData);
+        setCustomer(customerData);
+        setCustomers(customerList);
+        setOrders(history);
+        setCustomerId(String(vehicleData.customerId || ''));
+        setPlate(vehicleData.plate || '');
+        setBrand(vehicleData.brand || '');
+        setModel(vehicleData.model || '');
+        setYear(vehicleData.year ? String(vehicleData.year) : '');
+      } catch {
+        if (!cancelled) setVehicle(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id]);
+
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <p className="text-sm text-ink-500">Carregando veículo…</p>
+      </div>
+    );
+  }
 
   if (!vehicle) {
     return (
@@ -64,7 +114,7 @@ export default function VehicleDetail() {
   }
 
   function startEdit() {
-    setCustomerId(vehicle.customerId);
+    setCustomerId(String(vehicle.customerId));
     setPlate(vehicle.plate);
     setBrand(vehicle.brand);
     setModel(vehicle.model);
@@ -78,7 +128,7 @@ export default function VehicleDetail() {
     setError('');
   }
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault();
     setError('');
     if (!customerId || !plate.trim() || !brand.trim() || !model.trim()) {
@@ -86,14 +136,17 @@ export default function VehicleDetail() {
       return;
     }
     try {
-      store.saveVehicle({
-        id: vehicle.id,
-        customerId,
-        plate,
-        brand,
-        model,
-        year,
+      const updated = await updateVehicle(session.token, vehicle.id, {
+        customerId: Number(customerId),
+        plate: plate.trim(),
+        brand: brand.trim(),
+        model: model.trim(),
+        year: year ? Number(year) : null,
+        active: vehicle.active !== false,
       });
+      setVehicle(updated);
+      const customerData = await fetchCustomer(session.token, updated.customerId);
+      setCustomer(customerData);
       showSuccess('Veículo atualizado.');
       setSearchParams({});
     } catch (err) {
@@ -196,7 +249,7 @@ export default function VehicleDetail() {
                       {customer.name}
                     </button>
                   ) : (
-                    '—'
+                    vehicle.customerName || '—'
                   )}
                 </dd>
                 {customer && <dd className="text-ink-500">{customer.phone}</dd>}

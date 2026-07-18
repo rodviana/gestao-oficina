@@ -1,59 +1,110 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import { Card, FieldLabel, PageHeader, SelectInput } from '../components/ui/PageElements';
 import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess } from '../services/apiClient';
+import { fetchAllPages } from '../services/pageUtils';
+import { fetchCustomers } from '../services/customerService';
+import { fetchVehiclesByCustomer } from '../services/vehicleService';
+import { fetchMechanics } from '../services/authService';
+import { createWorkOrder } from '../services/workOrderService';
 
 export default function WorkOrderForm() {
-  const store = useMockStore();
   const { session } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const customers = store.listCustomers();
-  const mechanics = store.mechanics();
+  const [customers, setCustomers] = useState([]);
+  const [mechanics, setMechanics] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [customerId, setCustomerId] = useState(
-    searchParams.get('customerId') || customers[0]?.id || '',
-  );
+  const [customerId, setCustomerId] = useState(searchParams.get('customerId') || '');
   const [vehicleId, setVehicleId] = useState(searchParams.get('vehicleId') || '');
   const [description, setDescription] = useState('');
   const [mechanicId, setMechanicId] = useState('');
   const [error, setError] = useState('');
 
-  const vehicles = useMemo(
-    () => (customerId ? store.listVehicles({ customerId }) : []),
-    [store, customerId],
-  );
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const [customerList, mechanicList] = await Promise.all([
+          fetchAllPages((page, pageSize) => fetchCustomers(session.token, { page, pageSize })),
+          fetchMechanics(session.token),
+        ]);
+        if (cancelled) return;
+        setCustomers(customerList);
+        setMechanics(mechanicList);
+        if (!customerId && customerList[0]) {
+          setCustomerId(String(customerList[0].id));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
 
   useEffect(() => {
-    if (vehicleId && !vehicles.some((v) => v.id === vehicleId)) {
-      setVehicleId(vehicles[0]?.id || '');
-    } else if (!vehicleId && vehicles[0]) {
-      setVehicleId(vehicles[0].id);
+    if (!session?.token || !customerId) {
+      setVehicles([]);
+      return undefined;
     }
-  }, [vehicles, vehicleId]);
+    let cancelled = false;
 
-  function handleSubmit(event) {
+    (async () => {
+      try {
+        const list = await fetchVehiclesByCustomer(session.token, customerId);
+        if (cancelled) return;
+        setVehicles(list);
+        if (vehicleId && !list.some((v) => String(v.id) === String(vehicleId))) {
+          setVehicleId(list[0] ? String(list[0].id) : '');
+        } else if (!vehicleId && list[0]) {
+          setVehicleId(String(list[0].id));
+        }
+      } catch {
+        if (!cancelled) setVehicles([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, customerId, vehicleId]);
+
+  const vehicleOptions = useMemo(() => vehicles, [vehicles]);
+
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     if (!customerId || !vehicleId || !description.trim()) {
       setError('Cliente, veículo e descrição são obrigatórios.');
       return;
     }
-    const creator =
-      store.listUsers().find((u) => u.email === session?.email)?.id || 'u-1';
-    const saved = store.createWorkOrder({
-      customerId,
-      vehicleId,
-      description,
-      mechanicId: mechanicId || null,
-      createdById: creator,
-    });
-    showSuccess('Ordem de serviço aberta.');
-    navigate(`/work-orders/${saved.id}`);
+    try {
+      const saved = await createWorkOrder(session.token, {
+        customerId: Number(customerId),
+        vehicleId: Number(vehicleId),
+        description: description.trim(),
+        mechanicId: mechanicId ? Number(mechanicId) : undefined,
+      });
+      showSuccess('Ordem de serviço aberta.');
+      navigate(`/work-orders/${saved.id}`);
+    } catch (err) {
+      setError(err.message || 'Não foi possível abrir a OS.');
+    }
+  }
+
+  if (loading) {
+    return <p className="p-6 text-sm text-ink-500">Carregando…</p>;
   }
 
   return (
@@ -95,7 +146,7 @@ export default function WorkOrderForm() {
               disabled={!customerId}
             >
               <option value="">Selecione</option>
-              {vehicles.map((v) => (
+              {vehicleOptions.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.plate} — {v.brand} {v.model}
                 </option>

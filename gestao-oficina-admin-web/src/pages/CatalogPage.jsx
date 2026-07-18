@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
-import { formatMoney } from '../mock/labels';
+import { formatMoney } from '../constants/labels';
 import {
   Card,
   FieldLabel,
@@ -12,23 +11,53 @@ import {
 import { showSuccess } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import {
+  createServiceCatalogItem,
+  fetchServiceCatalog,
+  updateServiceCatalogItem,
+} from '../services/catalogService';
 
 /** Catálogo de serviços (mão de obra). Peças ficam em /parts. */
 export default function CatalogPage() {
-  const store = useMockStore();
   const { session } = useAuth();
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [active, setActive] = useState(true);
+
+  async function loadServices() {
+    if (!session?.token) return;
+    const data = await fetchServiceCatalog(session.token);
+    setServices(data);
+  }
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchServiceCatalog(session.token);
+        if (!cancelled) setServices(data);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
 
   if (session?.role === UserRole.MECHANIC) {
     return <Navigate to="/pista" replace />;
   }
 
   const isAdmin = session?.role === UserRole.ADMIN;
-  const services = store.listServiceCatalog();
-
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [editId, setEditId] = useState(null);
-  const [active, setActive] = useState(true);
 
   function resetForm() {
     setName('');
@@ -44,16 +73,25 @@ export default function CatalogPage() {
     setActive(item.active);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     if (!name.trim() || Number(price) < 0) return;
-    store.saveServiceCatalogItem({
-      id: editId || undefined,
-      name,
-      defaultPrice: price,
-      active,
-    });
-    showSuccess(editId ? 'Serviço atualizado.' : 'Serviço cadastrado.');
+    if (editId) {
+      await updateServiceCatalogItem(session.token, editId, {
+        name: name.trim(),
+        defaultPrice: Number(price),
+        active,
+      });
+      showSuccess('Serviço atualizado.');
+    } else {
+      await createServiceCatalogItem(session.token, {
+        name: name.trim(),
+        defaultPrice: Number(price),
+        active,
+      });
+      showSuccess('Serviço cadastrado.');
+    }
+    await loadServices();
     resetForm();
   }
 
@@ -107,44 +145,48 @@ export default function CatalogPage() {
       )}
 
       <Card padding={false}>
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th className="text-right">Preço</th>
-              <th>Situação</th>
-              {isAdmin && <th />}
-            </tr>
-          </thead>
-          <tbody>
-            {services.map((row) => (
-              <tr key={row.id}>
-                <td className="font-medium text-ink-900">{row.name}</td>
-                <td className="text-right">{formatMoney(row.defaultPrice)}</td>
-                <td>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                      row.active ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-500'
-                    }`}
-                  >
-                    {row.active ? 'Ativo' : 'Inativo'}
-                  </span>
-                </td>
-                {isAdmin && (
-                  <td className="text-right">
-                    <button
-                      type="button"
-                      className="text-sm font-semibold text-signal hover:underline"
-                      onClick={() => startEdit(row)}
-                    >
-                      Editar
-                    </button>
-                  </td>
-                )}
+        {loading ? (
+          <p className="p-6 text-sm text-ink-500">Carregando serviços…</p>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th className="text-right">Preço</th>
+                <th>Situação</th>
+                {isAdmin && <th />}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {services.map((row) => (
+                <tr key={row.id}>
+                  <td className="font-medium text-ink-900">{row.name}</td>
+                  <td className="text-right">{formatMoney(row.defaultPrice)}</td>
+                  <td>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        row.active ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-500'
+                      }`}
+                    >
+                      {row.active ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </td>
+                  {isAdmin && (
+                    <td className="text-right">
+                      <button
+                        type="button"
+                        className="text-sm font-semibold text-signal hover:underline"
+                        onClick={() => startEdit(row)}
+                      >
+                        Editar
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </Card>
     </div>
   );

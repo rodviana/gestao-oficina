@@ -1,23 +1,18 @@
 package com.gestaooficina.controller;
 
-import com.gestaooficina.controller.BaseController;
-import com.gestaooficina.controller.GestaoOficinaControllerMapping;
-
 import com.gestaooficina.config.OpenApiConfig;
-import com.gestaooficina.exception.GlobalException;
-import com.gestaooficina.model.enums.ValidationMessageEnum;
-import com.gestaooficina.model.response.HttpResponseEntityDTO;
+import com.gestaooficina.exception.GestaoOficinaForbiddenException;
+import com.gestaooficina.exception.GestaoOficinaGenericException;
+import com.gestaooficina.model.dto.HttpResponseEntityDTO;
 import com.gestaooficina.model.request.UserListRequest;
 import com.gestaooficina.model.response.UserListResponse;
 import com.gestaooficina.service.AdminUserListService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,12 +24,16 @@ import org.springframework.web.bind.annotation.RestController;
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 public class AdminUserListController extends BaseController {
 
-    private static final Logger log = LoggerFactory.getLogger(AdminUserListController.class);
-
     private final AdminUserListService adminUserListService;
 
     public AdminUserListController(AdminUserListService adminUserListService) {
         this.adminUserListService = adminUserListService;
+    }
+
+    @GetMapping(GestaoOficinaControllerMapping.ADMIN_USERS_LIST)
+    @Operation(summary = "List users (GET)", description = "Paginated list with filters via query params in POST body alternative.")
+    public ResponseEntity<HttpResponseEntityDTO<?>> listGet(Authentication authentication) {
+        return list(authentication, null);
     }
 
     @PostMapping(GestaoOficinaControllerMapping.ADMIN_USERS_LIST)
@@ -42,20 +41,17 @@ public class AdminUserListController extends BaseController {
     public ResponseEntity<HttpResponseEntityDTO<?>> list(
             Authentication authentication,
             @RequestBody(required = false) UserListRequest request) {
-        HttpResponseEntityDTO<UserListResponse> response = new HttpResponseEntityDTO<>();
         try {
             String email = requireEmail(authentication);
             UserListResponse data = adminUserListService.getList(email, request);
             log.info("[admin-user-list] OK count={} page={}", data.getTotalNumber(), data.getPageNumber());
-            response.setData(data);
-            response.setSuccess(true);
-            response.setStatus(HttpStatus.OK.value());
-            response.setMessage("User list loaded.");
-            return ResponseEntity.ok(response);
-        } catch (GlobalException e) {
-            return badRequest(e);
+            return ok(data, "User list loaded.");
+        } catch (GestaoOficinaForbiddenException e) {
+            return forbidden(e);
+        } catch (GestaoOficinaGenericException e) {
+            return genericError(e);
         } catch (Exception e) {
-            return internalServerError(e, ValidationMessageEnum.UNEXPECTED_ERROR_USER_LIST);
+            return internalError(e);
         }
     }
 }

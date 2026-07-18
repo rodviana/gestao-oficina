@@ -1,15 +1,9 @@
 package com.gestaooficina.service;
 
-import com.gestaooficina.exception.GlobalException;
-import com.gestaooficina.model.enums.ValidationMessageEnum;
-import com.gestaooficina.model.response.UserListItemResponse;
 import com.gestaooficina.model.request.UserListRequest;
+import com.gestaooficina.model.response.UserListItemResponse;
 import com.gestaooficina.model.response.UserListResponse;
-import com.gestaooficina.repository.AdminUserListJdbcRepository;
-import com.gestaooficina.repository.AuthJdbcRepository;
-import com.gestaooficina.repository.filter.UserEmailFilter;
-import com.gestaooficina.repository.filter.UserListFilter;
-import com.gestaooficina.model.record.UserRecord;
+import com.gestaooficina.repository.AdminUserListRepository;
 import com.gestaooficina.utils.UserValidationUtils;
 import org.springframework.stereotype.Service;
 
@@ -18,49 +12,37 @@ import java.util.List;
 @Service
 public class AdminUserListService {
 
-    private final AuthJdbcRepository authJdbcRepository;
-    private final AdminUserListJdbcRepository adminUserListJdbcRepository;
+    private final AuthSupport authSupport;
+    private final AdminUserListRepository adminUserListRepository;
 
-    public AdminUserListService(AuthJdbcRepository authJdbcRepository,
-                                AdminUserListJdbcRepository adminUserListJdbcRepository) {
-        this.authJdbcRepository = authJdbcRepository;
-        this.adminUserListJdbcRepository = adminUserListJdbcRepository;
+    public AdminUserListService(AuthSupport authSupport,
+                                AdminUserListRepository adminUserListRepository) {
+        this.authSupport = authSupport;
+        this.adminUserListRepository = adminUserListRepository;
     }
 
     public UserListResponse getList(String requesterEmail, UserListRequest request) {
-        requireAdmin(requesterEmail);
+        authSupport.requireAdmin(requesterEmail);
 
         UserListRequest source = request != null ? request : new UserListRequest();
         int page = source.getPage() != null ? source.getPage() : 0;
         int pageSize = source.getPageSize() != null ? source.getPageSize() : 20;
         UserValidationUtils.validatePagination(page, pageSize);
 
-        UserListFilter filter = new UserListFilter(
-                UserValidationUtils.normalizeRoleFilter(source.getRole()),
-                UserValidationUtils.normalizeActiveFilter(source.getActiveFilter()),
-                UserValidationUtils.normalizeSearchFieldFilter(source.getSearchField()),
-                UserValidationUtils.normalizeSearchText(source.getSearchText()),
-                source.getPage(),
-                source.getPageSize());
+        String role = UserValidationUtils.normalizeRoleFilter(source.getRole());
+        String activeFilter = UserValidationUtils.normalizeActiveFilter(source.getActiveFilter());
+        String searchField = UserValidationUtils.normalizeSearchFieldFilter(source.getSearchField());
+        String searchText = UserValidationUtils.normalizeSearchText(source.getSearchText());
 
-        long totalNumber = Math.max(adminUserListJdbcRepository.countUsers(filter), 0L);
+        long totalNumber = Math.max(
+                adminUserListRepository.countUsers(role, activeFilter, searchField, searchText), 0L);
 
-        int resolvedPageSize = filter.getPageSizeOrDefault();
-        int requestedPage = Math.max(filter.getPageOrDefault(), 0);
-        int pageMaxNumber = totalNumber <= 0 ? 0 : (int) ((totalNumber - 1) / resolvedPageSize);
-        int safePage = Math.min(requestedPage, pageMaxNumber);
+        int pageMaxNumber = totalNumber <= 0 ? 0 : (int) ((totalNumber - 1) / pageSize);
+        int safePage = Math.min(page, pageMaxNumber);
 
-        List<UserListItemResponse> items = adminUserListJdbcRepository.findUsersPage(
-                filter.withPage(safePage, resolvedPageSize));
+        List<UserListItemResponse> items = adminUserListRepository.findUsersPage(
+                role, activeFilter, searchField, searchText, safePage, pageSize);
 
-        return new UserListResponse(items, totalNumber, safePage, resolvedPageSize, pageMaxNumber);
-    }
-
-    private void requireAdmin(String email) {
-        UserRecord requester = authJdbcRepository.findByEmail(new UserEmailFilter(email))
-                .orElseThrow(() -> GlobalException.of(ValidationMessageEnum.UNAUTHORIZED));
-        if (!requester.getRole().isAdmin()) {
-            throw GlobalException.of(ValidationMessageEnum.ACCESS_DENIED);
-        }
+        return new UserListResponse(items, totalNumber, safePage, pageSize, pageMaxNumber);
     }
 }

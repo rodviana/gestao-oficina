@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import {
   Card,
   EmptyState,
@@ -12,22 +11,52 @@ import {
 import { showSuccess } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import {
+  createPartCatalogItem,
+  fetchPartCatalog,
+  updatePartCatalogItem,
+} from '../services/catalogService';
 
 export default function PartsPage() {
-  const store = useMockStore();
   const { session } = useAuth();
+  const [parts, setParts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [name, setName] = useState('');
+  const [editId, setEditId] = useState(null);
+  const [active, setActive] = useState(true);
+  const [error, setError] = useState('');
+
+  async function loadParts() {
+    if (!session?.token) return;
+    const data = await fetchPartCatalog(session.token);
+    setParts(data);
+  }
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchPartCatalog(session.token);
+        if (!cancelled) setParts(data);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
 
   if (session?.role === UserRole.MECHANIC) {
     return <Navigate to="/pista" replace />;
   }
 
   const canEdit = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
-  const parts = store.listPartCatalog();
-  const [query, setQuery] = useState('');
-  const [name, setName] = useState('');
-  const [editId, setEditId] = useState(null);
-  const [active, setActive] = useState(true);
-  const [error, setError] = useState('');
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -49,19 +78,21 @@ export default function PartsPage() {
     setError('');
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     if (!name.trim()) {
       setError('Informe o nome da peça.');
       return;
     }
-    store.savePartCatalogItem({
-      id: editId || undefined,
-      name,
-      active,
-    });
-    showSuccess(editId ? 'Peça atualizada.' : 'Peça cadastrada.');
+    if (editId) {
+      await updatePartCatalogItem(session.token, editId, { name: name.trim(), active });
+      showSuccess('Peça atualizada.');
+    } else {
+      await createPartCatalogItem(session.token, { name: name.trim(), active: true });
+      showSuccess('Peça cadastrada.');
+    }
+    await loadParts();
     resetForm();
   }
 
@@ -137,7 +168,9 @@ export default function PartsPage() {
           />
         </div>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <p className="p-6 text-sm text-ink-500">Carregando peças…</p>
+        ) : filtered.length === 0 ? (
           <EmptyState
             title="Nenhuma peça"
             description="Cadastre peças para agilizar o lançamento nas OS."

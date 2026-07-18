@@ -1,31 +1,69 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import { Card, FieldLabel, PageHeader, TextInput } from '../components/ui/PageElements';
 import { PrototypeBanner } from '../components/PrototypeChrome';
+import { useAuth } from '../context/AuthContext';
+import { createCustomer, fetchCustomer, updateCustomer } from '../services/customerService';
 import { showSuccess } from '../services/apiClient';
 
 export default function CustomerForm() {
   const { id } = useParams();
-  const store = useMockStore();
+  const { session } = useAuth();
   const navigate = useNavigate();
-  const existing = id ? store.getCustomer(id) : null;
+  const isEdit = Boolean(id);
 
-  const [name, setName] = useState(existing?.name || '');
-  const [phone, setPhone] = useState(existing?.phone || '');
-  const [document, setDocument] = useState(existing?.document || '');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [document, setDocument] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(isEdit);
 
-  function handleSubmit(event) {
+  useEffect(() => {
+    if (!isEdit || !session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const customer = await fetchCustomer(session.token, id);
+        if (!cancelled) {
+          setName(customer.name || '');
+          setPhone(customer.phone || '');
+          setDocument(customer.document || '');
+        }
+      } catch {
+        if (!cancelled) navigate('/customers');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEdit, session?.token, id, navigate]);
+
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     if (!name.trim() || !phone.trim()) {
       setError('Nome e telefone são obrigatórios.');
       return;
     }
-    const saved = store.saveCustomer({ id: existing?.id, name, phone, document });
-    showSuccess(existing ? 'Cliente atualizado.' : 'Cliente cadastrado.');
-    navigate(saved?.id ? `/customers/${saved.id}` : '/customers');
+    try {
+      const payload = { name: name.trim(), phone: phone.trim(), document: document.trim() };
+      const saved = isEdit
+        ? await updateCustomer(session.token, id, { ...payload, active: true })
+        : await createCustomer(session.token, payload);
+      showSuccess(isEdit ? 'Cliente atualizado.' : 'Cliente cadastrado.');
+      navigate(saved?.id ? `/customers/${saved.id}` : '/customers');
+    } catch (err) {
+      setError(err.message || 'Não foi possível salvar.');
+    }
+  }
+
+  if (loading) {
+    return <p className="p-6 text-sm text-ink-500">Carregando…</p>;
   }
 
   return (
@@ -33,7 +71,7 @@ export default function CustomerForm() {
       <PrototypeBanner />
       <PageHeader
         eyebrow="RF-04"
-        title={existing ? 'Editar cliente' : 'Novo cliente'}
+        title={isEdit ? 'Editar cliente' : 'Novo cliente'}
         description="Dados mínimos para o atendimento."
         backTo="/customers"
       />

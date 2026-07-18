@@ -19,9 +19,9 @@ Sem pressa, sem escopo fechado — a ideia é ir descobrindo o que faz sentido c
 3. **Fazer e mostrar** — codar, testar, ver se serve.
 4. **Anotar aqui** — o que ficou pronto e o que vem depois.
 
-Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](./docs/requirements.md) com problema, fluxo e critérios de aceite. Nada de burocracia antes da hora.
+Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](./docs/requirements.md) com problema, fluxo e critérios de aceite.
 
-**Requisitos:** [docs/requirements.md](./docs/requirements.md) — MVP (RF-01 a RF-14); RF-01 a RF-03 concluídos.
+**Requisitos:** [docs/requirements.md](./docs/requirements.md) — MVP RF-01 a RF-16 com dados reais (sem mocks).
 
 ---
 
@@ -32,7 +32,8 @@ Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](
 | [docs/setup.md](./docs/setup.md) | Instalar Docker, subir o app, resolver pepino comum |
 | [docs/requirements.md](./docs/requirements.md) | O que o sistema precisa fazer (requisitos) |
 | [docs/architecture.md](./docs/architecture.md) | Como o código está organizado — **leia antes de codar** |
-| [Swagger UI](http://localhost:3000/swagger-ui/index.html) | Testar a API no navegador (com o app rodando) |
+| Swagger admin | http://localhost:8080/swagger-ui.html |
+| Swagger portal | http://localhost:8081/swagger-ui.html |
 
 ---
 
@@ -40,21 +41,28 @@ Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](
 
 ```
 gestao-oficina/
-├── database/                   # Scripts SQL e inicialização do PostgreSQL
-├── docs/                       # Documentação
-├── server-admin/               # API Java do sistema interno (Spring Boot, porta 8080)
-├── server-web/                 # API Java do portal do cliente (Spring Boot, porta 8081)
-├── gestao-oficina-admin-web/   # Sistema interno da oficina (staff)
-├── gestao-oficina-web/         # Portal do cliente (conta + histórico + consulta rápida)
+├── database/                   # SQL compartilhado + fn_* admin/web
+│   ├── create-database.sh      # Entrypoint idempotente (shared → admin → web)
+│   ├── shared/                 # Domínios, tabelas de negócio, seed
+│   ├── admin/                  # Funções do server-admin
+│   ├── web/                    # Funções do portal
+│   └── init/                   # Hook do Postgres no Docker
+├── docs/
+├── server-admin/               # API staff (Spring Boot :8080)
+├── server-web/                 # API portal (Spring Boot :8081)
+├── gestao-oficina-admin-web/   # Front staff (React)
+├── gestao-oficina-web/         # Front portal (React)
 └── docker-compose.yml
 ```
 
-Dentro de cada server, a ideia é simples: **controller** recebe a requisição, **service** pensa na regra, **repository** fala com o banco.
+Padrão de backend (referência ecommerce):
 
 ```
-controller/  →  service/  →  repository/
+controller/  →  service/  →  repository/ + repository/jdbc/
                   ↑
-               model/  (Request, Response, enums)
+               model/dto/
+                  ↑
+         database/**/FN_*.sql  (fn_*)
 ```
 
 ---
@@ -64,7 +72,7 @@ controller/  →  service/  →  repository/
 | Parte | Tecnologia |
 |-------|------------|
 | API | Java 11, Spring Boot 2.7, Maven |
-| Banco | PostgreSQL 15 (via JDBC + procedures) |
+| Banco | PostgreSQL 15 (JDBC + funções `fn_*`) |
 | Login | JWT + BCrypt |
 | Front | React 18 + Vite + Tailwind |
 
@@ -72,66 +80,52 @@ controller/  →  service/  →  repository/
 
 ## Como rodar
 
-### Protótipo de telas (só front, dados mockados)
-
-Cobre o MVP (RF-01 a RF-14) sem API nem Docker:
+### Stack completa (Docker) — recomendado
 
 ```bash
-cd gestao-oficina-admin-web
-npm install
-npm run dev
-```
-
-Abra http://localhost:5173 — login com um perfil pronto (admin / atendente / mecânico).
-
-### Portal do cliente (conta + histórico)
-
-Front separado do staff. Com conta: login, OS em andamento, histórico e veículos. Sem conta: consulta rápida por OS + placa ou telefone.
-
-Com Docker (junto do resto):
-
-```bash
+docker compose down -v   # se precisar recriar o banco do zero
 docker compose up --build --force-recreate --remove-orphans
 ```
 
-Portal: http://localhost:3001
+| O quê | URL |
+|-------|-----|
+| Sistema interno (staff) | http://localhost:3000 |
+| Portal do cliente | http://localhost:3001 |
+| API admin / Swagger | http://localhost:8080 / swagger-ui.html |
+| API portal / Swagger | http://localhost:8081 / swagger-ui.html |
 
-**Contas demo:** `roberto@email.com` / `ana@email.com` / `marcos@email.com` — senha `123456`
+**Staff:** `admin@oficina.com` / `admin123` · `atendente@oficina.com` / `attn123` · `mecanico@oficina.com` / `mech123`
 
-Só o portal em local:
+**Portal:** `roberto@email.com` / `ana@email.com` / `marcos@email.com` — senha `123456`
 
-```bash
-cd gestao-oficina-web
-npm install
-npm run dev
-```
+Consulta pública (sem login): número da OS + placa (ex.: `OS-2026-0001` + placa do seed).
 
-http://localhost:5174
-
-### Stack completa (Docker)
-
-Tudo roda no **Docker** — você não precisa instalar Java nem Node na máquina.
-
-Passo a passo completo: **[docs/setup.md](./docs/setup.md)**
-
-Resumo rápido:
+### Fronts em modo dev (API via Docker ou local)
 
 ```bash
-docker compose up --build --force-recreate --remove-orphans
+# staff
+cd gestao-oficina-admin-web && npm install && npm run dev   # :5173 → proxy /api → :8080
+
+# portal
+cd gestao-oficina-web && npm install && npm run dev         # :5174 → proxy /api → :8081
 ```
 
-| O quê | Onde abrir |
-|-------|------------|
-| Telas do sistema | http://localhost:3000 |
-| Portal do cliente (conta + histórico) | http://localhost:3001 |
-| Swagger (testar API) | http://localhost:3000/swagger-ui/index.html |
+### Banco só (local)
 
-**Login de teste:** `admin@oficina.com` / `admin123`
+```bash
+./database/create-database.sh
+# reset manual: psql … -f database/shared/V000_drop_all.sql && ./database/create-database.sh
+```
+
+Passo a passo: **[docs/setup.md](./docs/setup.md)**.
 
 ---
 
 ## Padrão de código
 
-Tudo explicado em detalhe em **[docs/architecture.md](./docs/architecture.md)**.
+Detalhes em **[docs/architecture.md](./docs/architecture.md)**:
 
-Se você está começando no projeto, esse é o segundo arquivo depois do setup.
+- Tabelas de domínio com FK (nada de status/role em VARCHAR solto)
+- `JdbcProcedureExecutor` + `fn_*` com params posicionais
+- Constraints nomeadas e SQL comentado
+- Fronts sem mock — só HTTP

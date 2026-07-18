@@ -1,5 +1,8 @@
-import { TRACKING_DATA } from './mock';
-import { STATUS, normalizePhone, normalizePlate } from './labels';
+import { apiFetch } from './api';
+import { getSessionToken } from './auth';
+import { STATUS, normalizePlate } from './labels';
+
+const PUBLIC_ORDER_KEY = 'gestao-oficina-public-order';
 
 const ACTIVE = new Set([
   STATUS.OPEN,
@@ -8,65 +11,139 @@ const ACTIVE = new Set([
   STATUS.READY,
 ]);
 
-export function hydrate(order) {
-  const customer = TRACKING_DATA.customers.find((c) => c.id === order.customerId);
-  const vehicle = TRACKING_DATA.vehicles.find((v) => v.id === order.vehicleId);
-  return { ...order, customer, vehicle };
+function mapItem(item) {
+  return {
+    id: item.id,
+    type: item.type,
+    typeLabel: item.typeLabel,
+    description: item.description,
+    quantity: Number(item.quantity),
+    unitPrice: Number(item.unitPrice),
+    lineTotal: item.lineTotal != null ? Number(item.lineTotal) : undefined,
+  };
 }
 
-export function findByNumberAndPlate(number, plate) {
-  const n = String(number || '').trim().toUpperCase();
+function mapTimelineEntry(entry) {
+  return {
+    id: entry.id,
+    status: entry.status,
+    statusLabel: entry.statusLabel,
+    note: entry.note,
+    at: entry.at,
+  };
+}
+
+/** Maps WorkOrderSummaryDto / WorkOrderDetailDto to the UI order shape. */
+export function mapOrder(dto) {
+  if (!dto) return null;
+
+  const vehicle =
+    dto.vehicleId != null || dto.vehiclePlate
+      ? {
+          id: dto.vehicleId,
+          plate: dto.vehiclePlate,
+          brand: dto.vehicleBrand,
+          model: dto.vehicleModel,
+          year: dto.vehicleYear,
+        }
+      : null;
+
+  const customer =
+    dto.customerId != null || dto.customerName
+      ? {
+          id: dto.customerId,
+          name: dto.customerName,
+        }
+      : null;
+
+  return {
+    id: dto.id,
+    number: dto.number,
+    customerId: dto.customerId,
+    vehicleId: dto.vehicleId,
+    description: dto.description,
+    status: dto.status,
+    statusLabel: dto.statusLabel,
+    paymentStatus: dto.paymentStatus,
+    paymentStatusLabel: dto.paymentStatusLabel,
+    total: dto.total != null ? Number(dto.total) : undefined,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt,
+    customer,
+    vehicle,
+    items: (dto.items || []).map(mapItem),
+    timeline: (dto.timeline || []).map(mapTimelineEntry),
+  };
+}
+
+function cachePublicOrder(order) {
+  if (!order?.id) return;
+  sessionStorage.setItem(`${PUBLIC_ORDER_KEY}-${order.id}`, JSON.stringify(order));
+}
+
+function readCachedPublicOrder(id) {
+  try {
+    const raw = sessionStorage.getItem(`${PUBLIC_ORDER_KEY}-${id}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function findByNumberAndPlate(number, plate) {
+  const n = String(number || '').trim();
   const p = normalizePlate(plate);
   if (!n || !p) return null;
 
-  const order = TRACKING_DATA.workOrders.find(
-    (wo) =>
-      wo.number.toUpperCase() === n ||
-      wo.number.toUpperCase().endsWith(n.replace(/^OS-?/i, '')),
-  );
-  if (!order) return null;
-
-  const vehicle = TRACKING_DATA.vehicles.find((v) => v.id === order.vehicleId);
-  if (!vehicle || normalizePlate(vehicle.plate) !== p) return null;
-
-  return hydrate(order);
+  const params = new URLSearchParams({ number: n, plate: p });
+  const dto = await apiFetch(`/api/v1/web/tracking?${params.toString()}`);
+  const order = mapOrder(dto);
+  if (order) cachePublicOrder(order);
+  return order;
 }
 
-export function findByPhone(phone) {
-  const digits = normalizePhone(phone);
-  if (digits.length < 8) return [];
-
-  const customer = TRACKING_DATA.customers.find(
-    (c) =>
-      normalizePhone(c.phone).endsWith(digits.slice(-8)) ||
-      normalizePhone(c.phone) === digits,
-  );
-  if (!customer) return [];
-
-  return getOrdersByCustomerId(customer.id);
+/** Public phone lookup is not available on the API — returns empty. */
+export async function findByPhone() {
+  return [];
 }
 
-export function getOrderById(id) {
-  const order = TRACKING_DATA.workOrders.find((wo) => wo.id === id);
-  return order ? hydrate(order) : null;
+export async function getOrderById(id, { token = getSessionToken() } = {}) {
+  const orderId = String(id || '').trim();
+  if (!orderId) return null;
+
+  if (token) {
+    const dto = await apiFetch(`/api/v1/web/me/orders/${orderId}`, { auth: true, token });
+    return mapOrder(dto);
+  }
+
+  return readCachedPublicOrder(orderId);
 }
 
-export function getOrdersByCustomerId(customerId) {
-  return TRACKING_DATA.workOrders
-    .filter((wo) => wo.customerId === customerId)
-    .map(hydrate)
+export async function getOrdersByCustomerId() {
+  const token = getSessionToken();
+  if (!token) return [];
+
+  const list = await apiFetch('/api/v1/web/me/orders', { auth: true, token });
+  return (list || [])
+    .map(mapOrder)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
-export function getVehiclesByCustomerId(customerId) {
-  return TRACKING_DATA.vehicles
-    .filter((v) => v.customerId === customerId)
-    .map((vehicle) => {
-      const orders = getOrdersByCustomerId(customerId).filter(
-        (wo) => wo.vehicleId === vehicle.id,
-      );
-      return { ...vehicle, orderCount: orders.length, lastOrder: orders[0] || null };
-    });
+export async function getVehiclesByCustomerId(orders = null) {
+  const token = getSessionToken();
+  if (!token) return [];
+
+  const list = await apiFetch('/api/v1/web/me/vehicles', { auth: true, token });
+  const orderList = orders || (await getOrdersByCustomerId());
+
+  return (list || []).map((vehicle) => {
+    const vehicleOrders = orderList.filter((wo) => wo.vehicleId === vehicle.id);
+    return {
+      ...vehicle,
+      orderCount: vehicleOrders.length,
+      lastOrder: vehicleOrders[0] || null,
+    };
+  });
 }
 
 export function splitActiveAndHistory(orders) {
@@ -75,7 +152,11 @@ export function splitActiveAndHistory(orders) {
   return { active, history };
 }
 
-export function customerOwnsOrder(customerId, orderId) {
-  const order = TRACKING_DATA.workOrders.find((wo) => wo.id === orderId);
-  return Boolean(order && order.customerId === customerId);
+export function customerOwnsOrder(customerId, orderId, order) {
+  if (order?.customerId != null && customerId != null) {
+    return String(order.customerId) === String(customerId);
+  }
+  // Sem customerId no payload (ex.: tracking público, que omite o dado),
+  // confiamos no servidor: /me/orders/{id} já retorna 403 se a OS não for do cliente.
+  return true;
 }

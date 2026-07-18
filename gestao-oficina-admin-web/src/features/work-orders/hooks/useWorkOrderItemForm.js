@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ItemType } from '../../../mock/labels';
+import { ItemType } from '../../../constants/labels';
 import { showSuccess } from '../../../services/apiClient';
+import { addWorkOrderItem, removeWorkOrderItem } from '../../../services/workOrderService';
 
 const emptyForm = () => ({
   catalogId: '',
@@ -10,7 +11,7 @@ const emptyForm = () => ({
   error: '',
 });
 
-export function useWorkOrderItemForm({ orderId, store, services, parts }) {
+export function useWorkOrderItemForm({ orderId, token, services, parts, onChanged }) {
   const [itemTab, setItemTab] = useState('part');
   const [form, setForm] = useState(emptyForm);
 
@@ -23,7 +24,7 @@ export function useWorkOrderItemForm({ orderId, store, services, parts }) {
 
   useEffect(() => {
     if (!form.catalogId) return;
-    const item = catalog.find((c) => c.id === form.catalogId);
+    const item = catalog.find((c) => String(c.id) === String(form.catalogId));
     if (!item) return;
 
     setForm((prev) => ({
@@ -55,7 +56,7 @@ export function useWorkOrderItemForm({ orderId, store, services, parts }) {
     return '';
   }
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
     const message = validate();
     if (message) {
@@ -64,23 +65,27 @@ export function useWorkOrderItemForm({ orderId, store, services, parts }) {
     }
 
     try {
-      store.addWorkOrderItem(orderId, {
-        type: itemType,
-        description: form.description,
-        quantity: form.quantity,
-        unitPrice: form.unitPrice,
+      await addWorkOrderItem(token, orderId, {
+        itemTypeCode: itemType,
+        serviceId: itemTab === 'service' && form.catalogId ? Number(form.catalogId) : undefined,
+        partId: itemTab === 'part' && form.catalogId ? Number(form.catalogId) : undefined,
+        description: form.description.trim(),
+        quantity: Number(form.quantity),
+        unitPrice: Number(form.unitPrice),
       });
       showSuccess(itemTab === 'part' ? 'Peça lançada na OS.' : 'Serviço lançado.');
       setForm(emptyForm());
+      await onChanged?.();
     } catch (err) {
       setForm((prev) => ({ ...prev, error: err.message }));
     }
   }
 
-  function removeItem(itemId) {
+  async function removeItem(itemId) {
     try {
-      store.removeWorkOrderItem(orderId, itemId);
+      await removeWorkOrderItem(token, itemId);
       showSuccess('Item removido.');
+      await onChanged?.();
     } catch (err) {
       setForm((prev) => ({ ...prev, error: err.message }));
     }

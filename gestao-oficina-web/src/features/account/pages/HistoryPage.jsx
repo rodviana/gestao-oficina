@@ -5,7 +5,7 @@ import { useCustomerPortfolio } from '../hooks/useCustomerPortfolio';
 import HistoryFilters from '../components/HistoryFilters';
 
 export default function HistoryPage() {
-  const { orders, active, history, vehicles } = useCustomerPortfolio();
+  const { orders, active, history, vehicles, loading, error } = useCustomerPortfolio();
   const [params, setParams] = useSearchParams();
   const [filter, setFilter] = useState('all');
   const [vehicleId, setVehicleId] = useState(() => params.get('veiculo') || 'all');
@@ -18,7 +18,9 @@ export default function HistoryPage() {
     let base = orders;
     if (filter === 'active') base = active;
     if (filter === 'history') base = history;
-    if (vehicleId !== 'all') base = base.filter((wo) => wo.vehicleId === vehicleId);
+    if (vehicleId !== 'all') {
+      base = base.filter((wo) => String(wo.vehicleId) === String(vehicleId));
+    }
     return base;
   }, [orders, active, history, filter, vehicleId]);
 
@@ -30,6 +32,14 @@ export default function HistoryPage() {
       params.set('veiculo', next);
     }
     setParams(params, { replace: true });
+  }
+
+  if (loading) {
+    return <p className="text-center text-sm text-shop-500">Carregando histórico…</p>;
+  }
+
+  if (error) {
+    return <p className="text-center text-sm text-red-700">{error}</p>;
   }
 
   return (

@@ -5,6 +5,7 @@ export default function TrackLookupForm({ lookup }) {
     plate,
     phone,
     error,
+    submitting,
     setNumber,
     setPlate,
     setPhone,
@@ -66,8 +67,8 @@ export default function TrackLookupForm({ lookup }) {
               />
             </div>
             {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-            <button type="submit" className="btn-primary w-full">
-              Ver andamento
+            <button type="submit" className="btn-primary w-full" disabled={submitting}>
+              {submitting ? 'Consultando…' : 'Ver andamento'}
             </button>
           </form>
         ) : (

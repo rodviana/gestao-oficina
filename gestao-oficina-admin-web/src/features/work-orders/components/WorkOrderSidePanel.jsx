@@ -4,10 +4,9 @@ import {
   WorkOrderStatus,
   WorkOrderStatusLabel,
   formatMoney,
-} from '../../../mock/labels';
+} from '../../../constants/labels';
 import { Card, FieldLabel, SelectInput } from '../../../components/ui/PageElements';
 import { UserRole } from '../../../constants/userRole';
-import { showSuccess } from '../../../services/apiClient';
 
 const LOCKED = [WorkOrderStatus.DELIVERED, WorkOrderStatus.CANCELLED];
 
@@ -15,12 +14,13 @@ export default function WorkOrderSidePanel({
   order,
   totals,
   session,
-  store,
+  mechanics = [],
   canChangeStatus,
   canPay,
   canManageItems,
   onStatusChange,
   onPaymentChange,
+  onMechanicChange,
 }) {
   return (
     <Card className="space-y-4">
@@ -82,13 +82,10 @@ export default function WorkOrderSidePanel({
           <SelectInput
             id="mechanic"
             value={order.mechanicId || ''}
-            onChange={(e) => {
-              store.assignMechanic(order.id, e.target.value || null);
-              showSuccess('Mecânico atualizado.');
-            }}
+            onChange={(e) => onMechanicChange(e.target.value || null)}
           >
             <option value="">Não atribuído</option>
-            {store.mechanics().map((m) => (
+            {mechanics.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>

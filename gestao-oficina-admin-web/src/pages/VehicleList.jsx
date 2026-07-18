@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import {
   Card,
   EmptyState,
@@ -11,15 +10,20 @@ import {
 import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+import { fetchVehicles } from '../services/vehicleService';
 
 export default function VehicleList() {
-  const store = useMockStore();
   const navigate = useNavigate();
   const { session } = useAuth();
   const [query, setQuery] = useState('');
   const canEdit = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
 
-  const vehicles = useMemo(() => store.listVehicles({ query }), [store, query]);
+  const { data: vehicles, loading } = useDebouncedSearch({
+    token: session?.token,
+    query,
+    fetcher: (token, search) => fetchVehicles(token, { search, page: 0, pageSize: 100 }),
+  });
 
   return (
     <div className="page-shell">
@@ -48,7 +52,9 @@ export default function VehicleList() {
       </Card>
 
       <div className="table-shell">
-        {vehicles.length === 0 ? (
+        {loading ? (
+          <p className="p-6 text-sm text-ink-500">Carregando veículos…</p>
+        ) : vehicles.length === 0 ? (
           <EmptyState title="Nenhum veículo" description="Cadastre um veículo vinculado a um cliente." />
         ) : (
           <div className="overflow-x-auto">
@@ -62,23 +68,20 @@ export default function VehicleList() {
                 </tr>
               </thead>
               <tbody>
-                {vehicles.map((v) => {
-                  const customer = store.getCustomer(v.customerId);
-                  return (
-                    <tr
-                      key={v.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/vehicles/${v.id}`)}
-                    >
-                      <td className="font-display font-bold text-ink-900">{v.plate}</td>
-                      <td>
-                        {v.brand} {v.model} {v.year ? `(${v.year})` : ''}
-                      </td>
-                      <td>{customer?.name || '—'}</td>
-                      <td className="text-right text-xs font-semibold text-signal">Ver detalhe →</td>
-                    </tr>
-                  );
-                })}
+                {vehicles.map((v) => (
+                  <tr
+                    key={v.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/vehicles/${v.id}`)}
+                  >
+                    <td className="font-display font-bold text-ink-900">{v.plate}</td>
+                    <td>
+                      {v.brand} {v.model} {v.year ? `(${v.year})` : ''}
+                    </td>
+                    <td>{v.customerName || '—'}</td>
+                    <td className="text-right text-xs font-semibold text-signal">Ver detalhe →</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

@@ -1,12 +1,12 @@
 package com.gestaooficina.utils;
 
-import com.gestaooficina.exception.GlobalException;
+import com.gestaooficina.exception.GestaoOficinaGenericException;
 import com.gestaooficina.model.enums.UserActiveFilterEnum;
 import com.gestaooficina.model.enums.UserRoleEnum;
 import com.gestaooficina.model.enums.UserSearchFieldFilterEnum;
-import com.gestaooficina.model.enums.ValidationMessageEnum;
 import com.gestaooficina.model.request.CreateUserRequest;
 import com.gestaooficina.model.request.LoginRequest;
+import org.springframework.dao.DataAccessException;
 
 import java.util.regex.Pattern;
 
@@ -19,55 +19,55 @@ public final class UserValidationUtils {
 
     public static void validateLoginRequest(LoginRequest request) {
         if (request == null) {
-            throw GlobalException.of(ValidationMessageEnum.EMAIL_REQUIRED);
+            throw new GestaoOficinaGenericException("E-mail é obrigatório.");
         }
         if (isBlank(request.getEmail())) {
-            throw GlobalException.of(ValidationMessageEnum.EMAIL_REQUIRED);
+            throw new GestaoOficinaGenericException("E-mail é obrigatório.");
         }
         if (!isValidEmail(request.getEmail())) {
-            throw GlobalException.of(ValidationMessageEnum.INVALID_EMAIL);
+            throw new GestaoOficinaGenericException("E-mail inválido.");
         }
         if (isBlank(request.getPassword())) {
-            throw GlobalException.of(ValidationMessageEnum.PASSWORD_REQUIRED);
+            throw new GestaoOficinaGenericException("Senha é obrigatória.");
         }
     }
 
     public static void validateCreateUserRequest(CreateUserRequest request) {
         if (request == null) {
-            throw GlobalException.of(ValidationMessageEnum.NAME_REQUIRED);
+            throw new GestaoOficinaGenericException("Nome é obrigatório.");
         }
         if (isBlank(request.getName())) {
-            throw GlobalException.of(ValidationMessageEnum.NAME_REQUIRED);
+            throw new GestaoOficinaGenericException("Nome é obrigatório.");
         }
         if (request.getName().trim().length() > 100) {
-            throw GlobalException.of(ValidationMessageEnum.NAME_MAX_LENGTH);
+            throw new GestaoOficinaGenericException("Nome deve ter no máximo 100 caracteres.");
         }
         if (isBlank(request.getEmail())) {
-            throw GlobalException.of(ValidationMessageEnum.EMAIL_REQUIRED);
+            throw new GestaoOficinaGenericException("E-mail é obrigatório.");
         }
         if (!isValidEmail(request.getEmail())) {
-            throw GlobalException.of(ValidationMessageEnum.INVALID_EMAIL);
+            throw new GestaoOficinaGenericException("E-mail inválido.");
         }
         if (isBlank(request.getPassword())) {
-            throw GlobalException.of(ValidationMessageEnum.PASSWORD_REQUIRED);
+            throw new GestaoOficinaGenericException("Senha é obrigatória.");
         }
         if (request.getPassword().length() < 6) {
-            throw GlobalException.of(ValidationMessageEnum.PASSWORD_MIN_LENGTH);
+            throw new GestaoOficinaGenericException("Senha deve ter no mínimo 6 caracteres.");
         }
         if (isBlank(request.getRole())) {
-            throw GlobalException.of(ValidationMessageEnum.ROLE_REQUIRED);
+            throw new GestaoOficinaGenericException("Perfil é obrigatório.");
         }
     }
 
     public static void validatePagination(int pageNumber, int pageSize) {
         if (pageNumber < 0) {
-            throw GlobalException.of(ValidationMessageEnum.INVALID_PAGE_NUMBER);
+            throw new GestaoOficinaGenericException("Número de página inválido.");
         }
         if (pageSize <= 0) {
-            throw GlobalException.of(ValidationMessageEnum.PAGE_SIZE_MIN);
+            throw new GestaoOficinaGenericException("Tamanho da página deve ser maior que zero.");
         }
         if (pageSize > 100) {
-            throw GlobalException.of(ValidationMessageEnum.PAGE_SIZE_MAX);
+            throw new GestaoOficinaGenericException("Tamanho máximo da página é 100.");
         }
     }
 
@@ -78,7 +78,7 @@ public final class UserValidationUtils {
         try {
             return UserRoleEnum.fromCode(role.trim()).getCode();
         } catch (IllegalArgumentException ex) {
-            throw GlobalException.of(ValidationMessageEnum.INVALID_ROLE_FILTER);
+            throw new GestaoOficinaGenericException("Filtro de perfil inválido.");
         }
     }
 
@@ -86,7 +86,7 @@ public final class UserValidationUtils {
         try {
             return UserActiveFilterEnum.normalize(activeFilter);
         } catch (IllegalArgumentException ex) {
-            throw GlobalException.of(ValidationMessageEnum.INVALID_STATUS_FILTER);
+            throw new GestaoOficinaGenericException("Filtro de status inválido.");
         }
     }
 
@@ -94,7 +94,7 @@ public final class UserValidationUtils {
         try {
             return UserSearchFieldFilterEnum.normalize(searchField);
         } catch (IllegalArgumentException ex) {
-            throw GlobalException.of(ValidationMessageEnum.INVALID_SEARCH_FIELD);
+            throw new GestaoOficinaGenericException("Campo de busca inválido.");
         }
     }
 
@@ -104,6 +104,30 @@ public final class UserValidationUtils {
         }
         String trimmed = searchText.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    public static void requireNonBlank(String value, String message) {
+        if (isBlank(value)) {
+            throw new GestaoOficinaGenericException(message);
+        }
+    }
+
+    public static void requirePositiveId(Long id, String message) {
+        if (id == null || id <= 0) {
+            throw new GestaoOficinaGenericException(message);
+        }
+    }
+
+    public static String jdbcErrorMessage(DataAccessException ex, String fallback) {
+        if (ex.getMostSpecificCause() != null && ex.getMostSpecificCause().getMessage() != null) {
+            String msg = ex.getMostSpecificCause().getMessage();
+            if (msg.contains("ERROR:")) {
+                int idx = msg.indexOf("ERROR:");
+                return msg.substring(idx + 6).trim();
+            }
+            return msg.trim();
+        }
+        return fallback;
     }
 
     private static boolean isBlank(String value) {

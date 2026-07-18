@@ -1,28 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import { Card, FieldLabel, PageHeader, SelectInput, TextInput } from '../components/ui/PageElements';
 import { PrototypeBanner } from '../components/PrototypeChrome';
+import { useAuth } from '../context/AuthContext';
+import { fetchAllPages } from '../services/pageUtils';
+import { fetchCustomers } from '../services/customerService';
+import {
+  createVehicle,
+  fetchVehicle,
+  updateVehicle,
+} from '../services/vehicleService';
 import { showSuccess } from '../services/apiClient';
 
 export default function VehicleForm() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const store = useMockStore();
+  const { session } = useAuth();
   const navigate = useNavigate();
-  const existing = id ? store.getVehicle(id) : null;
-  const customers = store.listCustomers();
+  const isEdit = Boolean(id);
 
-  const [customerId, setCustomerId] = useState(
-    existing?.customerId || searchParams.get('customerId') || customers[0]?.id || '',
-  );
-  const [plate, setPlate] = useState(existing?.plate || '');
-  const [brand, setBrand] = useState(existing?.brand || '');
-  const [model, setModel] = useState(existing?.model || '');
-  const [year, setYear] = useState(existing?.year ? String(existing.year) : '');
+  const [customers, setCustomers] = useState([]);
+  const [customerId, setCustomerId] = useState(searchParams.get('customerId') || '');
+  const [plate, setPlate] = useState('');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [year, setYear] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  function handleSubmit(event) {
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const customerList = await fetchAllPages((page, pageSize) =>
+          fetchCustomers(session.token, { page, pageSize }),
+        );
+        if (cancelled) return;
+        setCustomers(customerList);
+        if (!customerId && customerList[0]) {
+          setCustomerId(String(customerList[0].id));
+        }
+
+        if (isEdit) {
+          const vehicle = await fetchVehicle(session.token, id);
+          if (cancelled) return;
+          setCustomerId(String(vehicle.customerId));
+          setPlate(vehicle.plate || '');
+          setBrand(vehicle.brand || '');
+          setModel(vehicle.model || '');
+          setYear(vehicle.year ? String(vehicle.year) : '');
+        }
+      } catch {
+        if (!cancelled && isEdit) navigate('/vehicles');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id, isEdit, navigate]);
+
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     if (!customerId || !plate.trim() || !brand.trim() || !model.trim()) {
@@ -30,19 +73,25 @@ export default function VehicleForm() {
       return;
     }
     try {
-      const saved = store.saveVehicle({
-        id: existing?.id,
-        customerId,
-        plate,
-        brand,
-        model,
-        year,
-      });
-      showSuccess(existing ? 'Veículo atualizado.' : 'Veículo cadastrado.');
+      const payload = {
+        customerId: Number(customerId),
+        plate: plate.trim(),
+        brand: brand.trim(),
+        model: model.trim(),
+        year: year ? Number(year) : null,
+      };
+      const saved = isEdit
+        ? await updateVehicle(session.token, id, { ...payload, active: true })
+        : await createVehicle(session.token, payload);
+      showSuccess(isEdit ? 'Veículo atualizado.' : 'Veículo cadastrado.');
       navigate(saved?.id ? `/vehicles/${saved.id}` : '/vehicles');
     } catch (err) {
       setError(err.message || 'Não foi possível salvar.');
     }
+  }
+
+  if (loading) {
+    return <p className="p-6 text-sm text-ink-500">Carregando…</p>;
   }
 
   return (
@@ -50,7 +99,7 @@ export default function VehicleForm() {
       <PrototypeBanner />
       <PageHeader
         eyebrow="RF-05"
-        title={existing ? 'Editar veículo' : 'Novo veículo'}
+        title={isEdit ? 'Editar veículo' : 'Novo veículo'}
         description="Vincule o veículo a um cliente. A placa identifica o carro."
         backTo="/vehicles"
       />

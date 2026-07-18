@@ -1,6 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import {
   PaymentStatus,
   PaymentStatusLabel,
@@ -9,8 +8,8 @@ import {
   WorkOrderStatusTone,
   formatDate,
   formatMoney,
-} from '../mock/labels';
-import { workOrderTotal } from '../mock/seed';
+} from '../constants/labels';
+import { workOrderTotal } from '../utils/workOrderUtils';
 import {
   Card,
   EmptyState,
@@ -22,10 +21,10 @@ import {
 import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import { fetchAllWorkOrders } from '../services/workOrderService';
 
 /** Lista filtrável de OS — diferente do Kanban do Início. */
 export default function WorkOrderList() {
-  const store = useMockStore();
   const navigate = useNavigate();
   const { session } = useAuth();
   const canCreate = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
@@ -33,16 +32,50 @@ export default function WorkOrderList() {
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
   const [query, setQuery] = useState('');
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const orders = useMemo(
-    () =>
-      store.listWorkOrders({
-        status: status || undefined,
-        paymentStatus: paymentStatus || undefined,
-        query: query || undefined,
-      }),
-    [store, status, paymentStatus, query],
-  );
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const all = await fetchAllWorkOrders(session.token, {
+          status: status || undefined,
+          pageSize: 100,
+        });
+        if (!cancelled) setOrders(all);
+      } catch {
+        if (!cancelled) setOrders([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, status]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return orders.filter((wo) => {
+      if (paymentStatus && wo.paymentStatus !== paymentStatus) return false;
+      if (!q) return true;
+      const hay = [
+        wo.number,
+        wo.description,
+        wo.vehiclePlate,
+        wo.customerName,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [orders, paymentStatus, query]);
 
   return (
     <div className="page-shell">
@@ -111,11 +144,13 @@ export default function WorkOrderList() {
       <div className="table-shell">
         <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
           <p className="text-sm font-semibold text-ink-700">
-            {orders.length} ordem{orders.length === 1 ? '' : 'ns'}
+            {filtered.length} ordem{filtered.length === 1 ? '' : 'ns'}
           </p>
           <p className="text-xs text-ink-400">Clique na linha para abrir o detalhe</p>
         </div>
-        {orders.length === 0 ? (
+        {loading ? (
+          <p className="p-6 text-sm text-ink-500">Carregando ordens…</p>
+        ) : filtered.length === 0 ? (
           <EmptyState title="Nenhuma OS encontrada" />
         ) : (
           <div className="overflow-x-auto">
@@ -132,37 +167,33 @@ export default function WorkOrderList() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((wo) => {
-                  const customer = store.getCustomer(wo.customerId);
-                  const vehicle = store.getVehicle(wo.vehicleId);
-                  return (
-                    <tr
-                      key={wo.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/work-orders/${wo.id}`)}
-                    >
-                      <td className="font-display font-bold text-signal">{wo.number}</td>
-                      <td>
-                        {customer?.name}
-                        <span className="block text-xs text-ink-400">{vehicle?.plate}</span>
-                      </td>
-                      <td className="max-w-[220px]">
-                        <span className="line-clamp-2 text-ink-600">{wo.description}</span>
-                      </td>
-                      <td>{formatDate(wo.createdAt)}</td>
-                      <td>
-                        <StatusBadge
-                          label={WorkOrderStatusLabel[wo.status]}
-                          tone={WorkOrderStatusTone[wo.status]}
-                        />
-                      </td>
-                      <td>{PaymentStatusLabel[wo.paymentStatus]}</td>
-                      <td className="text-right font-bold text-ink-900">
-                        {formatMoney(workOrderTotal(wo))}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {filtered.map((wo) => (
+                  <tr
+                    key={wo.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/work-orders/${wo.id}`)}
+                  >
+                    <td className="font-display font-bold text-signal">{wo.number}</td>
+                    <td>
+                      {wo.customerName}
+                      <span className="block text-xs text-ink-400">{wo.vehiclePlate}</span>
+                    </td>
+                    <td className="max-w-[220px]">
+                      <span className="line-clamp-2 text-ink-600">{wo.description}</span>
+                    </td>
+                    <td>{formatDate(wo.createdAt)}</td>
+                    <td>
+                      <StatusBadge
+                        label={WorkOrderStatusLabel[wo.status]}
+                        tone={WorkOrderStatusTone[wo.status]}
+                      />
+                    </td>
+                    <td>{PaymentStatusLabel[wo.paymentStatus]}</td>
+                    <td className="text-right font-bold text-ink-900">
+                      {formatMoney(workOrderTotal(wo))}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

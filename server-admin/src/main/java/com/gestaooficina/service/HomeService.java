@@ -1,31 +1,28 @@
 package com.gestaooficina.service;
 
-import com.gestaooficina.exception.GlobalException;
-import com.gestaooficina.model.enums.ValidationMessageEnum;
 import com.gestaooficina.model.response.HomeResponse;
-import com.gestaooficina.repository.AuthJdbcRepository;
-import com.gestaooficina.repository.filter.UserEmailFilter;
 import com.gestaooficina.model.record.UserRecord;
+import com.gestaooficina.repository.AuthRepository;
 import org.springframework.stereotype.Service;
 
 @Service
 public class HomeService {
 
-    private final AuthJdbcRepository authJdbcRepository;
+    private final AuthRepository authRepository;
 
-    public HomeService(AuthJdbcRepository authJdbcRepository) {
-        this.authJdbcRepository = authJdbcRepository;
+    public HomeService(AuthRepository authRepository) {
+        this.authRepository = authRepository;
     }
 
     public HomeResponse getHome(String email) {
-        UserRecord user = authJdbcRepository.findByEmail(new UserEmailFilter(email))
-                .orElseThrow(() -> GlobalException.of(ValidationMessageEnum.UNAUTHORIZED));
+        UserRecord user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new com.gestaooficina.exception.GestaoOficinaForbiddenException("Não autorizado."));
 
         return new HomeResponse(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole().getCode(),
+                user.getRole(),
                 "Welcome to Gestão Oficina, " + user.getName() + "!");
     }
 }

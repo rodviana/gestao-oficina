@@ -1,5 +1,6 @@
 package com.gestaooficina.config;
 
+import com.gestaooficina.controller.GestaoOficinaWebControllerMapping;
 import com.gestaooficina.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,13 +28,17 @@ public class SecurityConfig {
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeRequests()
-                .antMatchers(HttpMethod.POST, "/api/v1/web/auth/login").permitAll()
-                .antMatchers("/api/health").permitAll()
+                .antMatchers(HttpMethod.POST,
+                        GestaoOficinaWebControllerMapping.WEB_AUTH_PATH + GestaoOficinaWebControllerMapping.AUTH_LOGIN)
+                .permitAll()
+                .antMatchers(HttpMethod.GET, GestaoOficinaWebControllerMapping.WEB_TRACKING_PATH).permitAll()
+                .antMatchers(GestaoOficinaWebControllerMapping.HEALTH_PATH).permitAll()
                 .antMatchers(
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/v3/api-docs/**"
                 ).permitAll()
+                .antMatchers(GestaoOficinaWebControllerMapping.WEB_ME_PATH + "/**").authenticated()
                 .anyRequest().authenticated()
                 .and()
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

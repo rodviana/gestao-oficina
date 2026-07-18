@@ -94,7 +94,7 @@ export default function LoginPage() {
       </div>
 
       <p className="mt-auto pt-10 text-center text-xs text-shop-500/80">
-        Portal do cliente · protótipo com dados mockados
+        Portal do cliente · Gestão Oficina
       </p>
     </div>
   );

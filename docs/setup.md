@@ -76,9 +76,9 @@ docker compose up --build --force-recreate --remove-orphans
 
 O que acontece:
 
-- Monta a **API** (Java) e o **front** (React).
-- Sobe o **PostgreSQL**.
-- Na **primeira vez** (banco novo), cria tabelas, procedures e o usuário admin.
+- Sobe o **PostgreSQL** e aplica `database/create-database.sh` (schema shared + funções admin/web + seed).
+- Monta as APIs **server-admin** (:8080) e **server-web** (:8081).
+- Monta os fronts **admin** (:3000) e **portal** (:3001).
 
 A primeira vez pode demorar uns minutos (baixar imagens + build). Funciona em Mac (Intel e Apple Silicon), Windows e Linux.
 
@@ -109,19 +109,28 @@ Com os containers rodando:
 
 | O quê | URL |
 |-------|-----|
-| **Telas** (login, admin, etc.) | http://localhost:3000 |
-| **Portal do cliente** (conta + histórico) | http://localhost:3001 |
-| **API direta** | http://localhost:8080 |
-| **Swagger** (testar endpoints) | http://localhost:3000/swagger-ui/index.html |
+| **Staff** (sistema interno) | http://localhost:3000 |
+| **Portal do cliente** | http://localhost:3001 |
+| **API admin** | http://localhost:8080 |
+| **API portal** | http://localhost:8081 |
+| **Swagger admin** | http://localhost:8080/swagger-ui.html |
+| **Swagger portal** | http://localhost:8081/swagger-ui.html |
 
-### Login de teste
+### Login de teste (staff)
 
 | Campo | Valor |
 |-------|-------|
 | E-mail | `admin@oficina.com` |
 | Senha | `admin123` |
 
-Com esse usuário você entra no painel admin, cadastra e lista usuários.
+Outros: `atendente@oficina.com` / `attn123` · `mecanico@oficina.com` / `mech123`
+
+### Login de teste (portal)
+
+| Campo | Valor |
+|-------|-------|
+| E-mail | `roberto@email.com` (ou ana@ / marcos@) |
+| Senha | `123456` |
 
 ---
 
@@ -129,12 +138,12 @@ Com esse usuário você entra no painel admin, cadastra e lista usuários.
 
 Útil pra ver se o back está respondendo sem depender do front.
 
-1. Abra http://localhost:3000/swagger-ui/index.html
-2. Vá em **Auth** → **POST /api/v1/auth/login**
+1. Abra http://localhost:8080/swagger-ui.html
+2. Vá em **Login** → **POST /api/v1/auth/login**
 3. **Try it out**, coloque e-mail e senha, execute.
-4. Copie o `token` da resposta.
+4. Copie o `token` da resposta (`data.token`).
 5. Clique no **cadeado Authorize** e cole: `Bearer <token>`
-6. Teste os outros endpoints (Home, Admin, Users).
+6. Teste os outros endpoints (customers, vehicles, work-orders…).
 
 ---
 

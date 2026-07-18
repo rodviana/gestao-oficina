@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserRoleOptions } from '../constants/userRole';
-import { useMockStore } from '../mock/MockStore';
 import {
   Card,
   FieldLabel,
@@ -10,10 +9,12 @@ import {
   TextInput,
 } from '../components/ui/PageElements';
 import { PrototypeBanner } from '../components/PrototypeChrome';
+import { useAuth } from '../context/AuthContext';
+import { createUser } from '../services/authService';
 import { showSuccess } from '../services/apiClient';
 
 export default function AdminUserRegister() {
-  const store = useMockStore();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export default function AdminUserRegister() {
   const [role, setRole] = useState(UserRoleOptions[0].value);
   const [error, setError] = useState('');
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     setError('');
     if (!name.trim() || !email.trim() || password.length < 6) {
@@ -29,7 +30,7 @@ export default function AdminUserRegister() {
       return;
     }
     try {
-      store.createUser({ name, email, role });
+      await createUser(session.token, { name, email, password, role });
       showSuccess('Usuário cadastrado.');
       navigate('/admin/users');
     } catch (err) {

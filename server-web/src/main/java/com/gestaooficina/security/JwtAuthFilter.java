@@ -34,13 +34,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             try {
                 Claims claims = jwtService.parse(token);
-                String email = claims.getSubject();
+                Long customerId = jwtService.extractCustomerId(claims);
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        email,
+                        customerId,
                         null,
                         Collections.singletonList(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
                 SecurityContextHolder.getContext().setAuthentication(auth);
-            } catch (JwtException ignored) {
+            } catch (JwtException | NumberFormatException ignored) {
                 SecurityContextHolder.clearContext();
             }
         }

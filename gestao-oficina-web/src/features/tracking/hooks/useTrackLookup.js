@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { findByNumberAndPlate, findByPhone } from '../../../data/tracking';
+import { findByNumberAndPlate } from '../../../data/tracking';
 
 export function useTrackLookup() {
   const navigate = useNavigate();
@@ -9,6 +9,7 @@ export function useTrackLookup() {
   const [plate, setPlate] = useState('');
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   function clearError() {
     setError('');
@@ -21,35 +22,33 @@ export function useTrackLookup() {
 
   function fillDemo(demo) {
     setTab('os');
-    setNumber(demo.number);
+    setNumber(demo.number || '');
     setPlate(demo.plate);
     setError('');
   }
 
-  function submitByOs(event) {
+  async function submitByOs(event) {
     event.preventDefault();
     setError('');
-    const found = findByNumberAndPlate(number, plate);
-    if (!found) {
-      setError('Não encontramos essa OS com essa placa. Confira os dados do comprovante.');
-      return;
+    setSubmitting(true);
+    try {
+      const found = await findByNumberAndPlate(number, plate);
+      if (!found) {
+        setError('Não encontramos essa OS com essa placa. Confira os dados do comprovante.');
+        return;
+      }
+      navigate(`/os/${found.id}`, { state: { order: found } });
+    } catch (err) {
+      setError(err.message || 'Não foi possível consultar a OS.');
+    } finally {
+      setSubmitting(false);
     }
-    navigate(`/os/${found.id}`);
   }
 
   function submitByPhone(event) {
     event.preventDefault();
     setError('');
-    const list = findByPhone(phone);
-    if (list.length === 0) {
-      setError('Nenhuma OS encontrada para este telefone.');
-      return;
-    }
-    if (list.length === 1) {
-      navigate(`/os/${list[0].id}`);
-      return;
-    }
-    navigate(`/busca?phone=${encodeURIComponent(phone)}`);
+    setError('Para ver todas as suas OS, entre na sua conta. Ou use OS + placa na consulta rápida.');
   }
 
   return {
@@ -58,6 +57,7 @@ export function useTrackLookup() {
     plate,
     phone,
     error,
+    submitting,
     setNumber,
     setPlate,
     setPhone,

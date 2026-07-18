@@ -1,7 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/ToastProvider';
-import { MockStoreProvider } from './mock/MockStore';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
@@ -51,44 +50,42 @@ export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
-        <MockStoreProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<LoginRoute />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="work-orders/:id/print" element={<WorkOrderPrint />} />
-                <Route element={<Layout />}>
-                  <Route index element={<HomeIndex />} />
-                  <Route path="pista" element={<Home />} />
-                  <Route path="dashboard" element={<Navigate to="/" replace />} />
-                  <Route path="work-orders" element={<WorkOrderList />} />
-                  <Route element={<AttendantRoute />}>
-                    <Route path="work-orders/new" element={<WorkOrderForm />} />
-                    <Route path="customers/new" element={<CustomerForm />} />
-                    <Route path="vehicles/new" element={<VehicleForm />} />
-                  </Route>
-                  <Route path="work-orders/:id" element={<WorkOrderDetail />} />
-                  <Route path="customers" element={<CustomerList />} />
-                  <Route path="customers/:id" element={<CustomerDetail />} />
-                  <Route path="customers/:id/edit" element={<CustomerEditRedirect />} />
-                  <Route path="vehicles" element={<VehicleList />} />
-                  <Route path="vehicles/:id" element={<VehicleDetail />} />
-                  <Route path="vehicles/:id/edit" element={<VehicleEditRedirect />} />
-                  <Route path="vehicles/:id/history" element={<VehicleHistoryRedirect />} />
-                  <Route path="catalogs" element={<CatalogPage />} />
-                  <Route path="parts" element={<PartsPage />} />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginRoute />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="work-orders/:id/print" element={<WorkOrderPrint />} />
+              <Route element={<Layout />}>
+                <Route index element={<HomeIndex />} />
+                <Route path="pista" element={<Home />} />
+                <Route path="dashboard" element={<Navigate to="/" replace />} />
+                <Route path="work-orders" element={<WorkOrderList />} />
+                <Route element={<AttendantRoute />}>
+                  <Route path="work-orders/new" element={<WorkOrderForm />} />
+                  <Route path="customers/new" element={<CustomerForm />} />
+                  <Route path="vehicles/new" element={<VehicleForm />} />
+                </Route>
+                <Route path="work-orders/:id" element={<WorkOrderDetail />} />
+                <Route path="customers" element={<CustomerList />} />
+                <Route path="customers/:id" element={<CustomerDetail />} />
+                <Route path="customers/:id/edit" element={<CustomerEditRedirect />} />
+                <Route path="vehicles" element={<VehicleList />} />
+                <Route path="vehicles/:id" element={<VehicleDetail />} />
+                <Route path="vehicles/:id/edit" element={<VehicleEditRedirect />} />
+                <Route path="vehicles/:id/history" element={<VehicleHistoryRedirect />} />
+                <Route path="catalogs" element={<CatalogPage />} />
+                <Route path="parts" element={<PartsPage />} />
 
-                    <Route element={<AdminRoute />}>
-                    <Route path="admin" element={<Navigate to="/admin/users" replace />} />
-                    <Route path="admin/users" element={<AdminUserList />} />
-                    <Route path="admin/users/new" element={<AdminUserRegister />} />
-                  </Route>
+                <Route element={<AdminRoute />}>
+                  <Route path="admin" element={<Navigate to="/admin/users" replace />} />
+                  <Route path="admin/users" element={<AdminUserList />} />
+                  <Route path="admin/users/new" element={<AdminUserRegister />} />
                 </Route>
               </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </MockStoreProvider>
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
       </AuthProvider>
     </ToastProvider>
   );

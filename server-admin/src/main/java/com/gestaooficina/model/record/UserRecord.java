@@ -8,10 +8,10 @@ public class UserRecord {
     private final String email;
     private final String password;
     private final String name;
-    private final UserRoleEnum role;
+    private final String role;
     private final boolean active;
 
-    public UserRecord(Long id, String email, String password, String name, UserRoleEnum role, boolean active) {
+    public UserRecord(Long id, String email, String password, String name, String role, boolean active) {
         this.id = id;
         this.email = email;
         this.password = password;
@@ -36,11 +36,19 @@ public class UserRecord {
         return name;
     }
 
-    public UserRoleEnum getRole() {
+    public String getRole() {
         return role;
     }
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean isAdmin() {
+        try {
+            return UserRoleEnum.fromCode(role).isAdmin();
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 }

@@ -4,7 +4,15 @@ import { useCustomerPortfolio } from '../hooks/useCustomerPortfolio';
 import AccountStats from '../components/AccountStats';
 
 export default function AccountHomePage() {
-  const { active, history, vehicles } = useCustomerPortfolio();
+  const { active, history, vehicles, loading, error } = useCustomerPortfolio();
+
+  if (loading) {
+    return <p className="text-center text-sm text-shop-500">Carregando sua conta…</p>;
+  }
+
+  if (error) {
+    return <p className="text-center text-sm text-red-700">{error}</p>;
+  }
 
   return (
     <div className="space-y-8">

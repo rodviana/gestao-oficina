@@ -11,7 +11,7 @@ export function PrototypeBanner() {
       <div>
         <p className="font-semibold">Protótipo visual</p>
         <p className="text-xs text-amber-900/80">
-          Dados mockados (RF-01 a RF-14). Arraste cards no Kanban para mudar o status da OS.
+          Conectado ao backend admin. Arraste cards no Kanban para mudar o status da OS.
         </p>
       </div>
     </div>

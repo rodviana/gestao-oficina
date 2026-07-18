@@ -1,4 +1,4 @@
-import { DEMO_LOOKUPS } from '../../../data/mock';
+import { DEMO_LOOKUPS } from '../../../data/demo';
 
 export default function DemoLookupList({ onSelect }) {
   return (
@@ -16,7 +16,8 @@ export default function DemoLookupList({ onSelect }) {
           >
             <span className="font-semibold text-shop-900">{demo.label}</span>
             <span className="mt-0.5 block text-shop-500">
-              {demo.number} · {demo.plate}
+              {demo.number ? `${demo.number} · ` : ''}
+              {demo.plate}
             </span>
           </button>
         ))}

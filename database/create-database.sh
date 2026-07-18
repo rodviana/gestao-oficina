@@ -1,16 +1,17 @@
 #!/bin/sh
 set -eu
 
-# Cria e popula o banco do Gestão Oficina (admin + web) a partir dos scripts SQL
-# em database/admin e database/web, na ordem correta. Idempotente.
+# Cria e popula o banco do Gestão Oficina (shared + admin + web).
+# Idempotente. Ordem: shared → admin → web.
 #
-# Uso local (Postgres rodando):
+# Uso local:
 #   ./database/create-database.sh
 #
-# Variáveis (com defaults):
+# Variáveis:
 #   PGHOST=localhost PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres DB_NAME=gestao_oficina
-#   CREATE_DB=true   # cria o database se não existir; use false quando ele já existe
-#                    # (ex.: dentro do init do container, onde o Postgres já criou o DB)
+#   CREATE_DB=true   # false no init do container (DB já existe)
+#   USE_SOCKET=true  # conecta via socket Unix (init do Postgres no Docker,
+#                    # quando o servidor ainda não escuta TCP)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -20,24 +21,43 @@ PGUSER="${PGUSER:-${POSTGRES_USER:-postgres}}"
 export PGPASSWORD="${PGPASSWORD:-${POSTGRES_PASSWORD:-postgres}}"
 DB_NAME="${DB_NAME:-${POSTGRES_DB:-gestao_oficina}}"
 CREATE_DB="${CREATE_DB:-true}"
+USE_SOCKET="${USE_SOCKET:-false}"
 
-# Scripts de cada aplicação, na ordem de aplicação.
-ADMIN_SCRIPTS="V001_schema_users.sql P_FIND_USER_BY_EMAIL.sql P_CREATE_USER.sql P_COUNT_USERS_FILTERED.sql P_FIND_USERS_FILTERED.sql V002_seed_admin.sql"
-WEB_SCRIPTS="V001_schema_customers.sql P_FIND_CUSTOMER_BY_LOGIN.sql V002_seed_customers.sql"
+# Durante o init do container, o Postgres só aceita conexão via socket Unix.
+if [ "$USE_SOCKET" = "true" ]; then
+    CONN_ARGS="-U $PGUSER"
+else
+    CONN_ARGS="-h $PGHOST -p $PGPORT -U $PGUSER"
+fi
+
+# Schema + seed compartilhados (não inclui V000_drop_all — reset manual)
+SHARED_SCRIPTS="V001_schema_domain.sql V002_schema_business.sql V003_seed_staff.sql V004_seed_mvp.sql"
+
+# Funções específicas do admin
+ADMIN_SCRIPTS="FN_USERS.sql FN_CUSTOMERS.sql FN_VEHICLES.sql FN_CATALOGS.sql FN_WORK_ORDERS.sql"
+
+# Funções específicas do portal
+WEB_SCRIPTS="FN_PORTAL.sql"
 
 run_sql_file() {
-    psql -v ON_ERROR_STOP=1 -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d "$DB_NAME" -f "$1"
+    # shellcheck disable=SC2086
+    psql -v ON_ERROR_STOP=1 $CONN_ARGS -d "$DB_NAME" -f "$1"
 }
 
 if [ "$CREATE_DB" = "true" ]; then
     echo "Ensuring database '$DB_NAME' exists..."
-    EXISTS="$(psql -tAc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" \
-        -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres)"
+    # shellcheck disable=SC2086
+    EXISTS="$(psql -tAc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" $CONN_ARGS -d postgres)"
     if [ "$EXISTS" != "1" ]; then
-        psql -v ON_ERROR_STOP=1 -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres \
-            -c "CREATE DATABASE $DB_NAME"
+        # shellcheck disable=SC2086
+        psql -v ON_ERROR_STOP=1 $CONN_ARGS -d postgres -c "CREATE DATABASE $DB_NAME"
     fi
 fi
+
+for f in $SHARED_SCRIPTS; do
+    echo "Applying shared/$f..."
+    run_sql_file "$SCRIPT_DIR/shared/$f"
+done
 
 for f in $ADMIN_SCRIPTS; do
     echo "Applying admin/$f..."

@@ -1,4 +1,4 @@
-import { DEMO_ACCOUNTS } from '../../../data/mock';
+import { DEMO_ACCOUNTS } from '../../../data/demo';
 
 export default function DemoAccountList({ onSelect }) {
   return (

@@ -18,7 +18,7 @@ export default function TrackHomePage() {
           Consulta rápida
         </h1>
         <p className="mx-auto mt-3 max-w-sm text-base leading-relaxed text-shop-500">
-          Sem conta: informe a OS e a placa — ou o telefone — para ver o andamento de uma OS.
+          Sem conta: informe a OS e a placa para ver o andamento. Com conta, você vê todo o histórico.
         </p>
       </header>
 

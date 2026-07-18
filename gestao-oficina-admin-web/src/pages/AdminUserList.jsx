@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { UserRole, UserRoleOptions, roleLabel } from '../constants/userRole';
-import { useMockStore } from '../mock/MockStore';
-import { formatDate } from '../mock/labels';
+import { formatDate } from '../constants/labels';
 import {
   Card,
   EmptyState,
@@ -12,22 +11,44 @@ import {
   TextInput,
 } from '../components/ui/PageElements';
 import { PrototypeBanner } from '../components/PrototypeChrome';
+import { useAuth } from '../context/AuthContext';
+import { fetchUserList } from '../services/authService';
 
 export default function AdminUserList() {
-  const store = useMockStore();
+  const { session } = useAuth();
   const [role, setRole] = useState('');
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [query, setQuery] = useState('');
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const users = useMemo(
-    () =>
-      store.listUsers({
-        role: role || undefined,
-        active: activeFilter === 'ALL' ? undefined : activeFilter === 'ACTIVE',
-        query: query || undefined,
-      }),
-    [store, role, activeFilter, query],
-  );
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchUserList(session.token, {
+          role: role || 'ALL',
+          activeFilter,
+          searchField: query.trim() ? 'NAME' : undefined,
+          searchText: query.trim() || undefined,
+          page: 0,
+          pageSize: 100,
+        });
+        if (!cancelled) setUsers(data?.items ?? []);
+      } catch {
+        if (!cancelled) setUsers([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, role, activeFilter, query]);
 
   return (
     <div className="space-y-6">
@@ -82,7 +103,9 @@ export default function AdminUserList() {
       </Card>
 
       <Card padding={false}>
-        {users.length === 0 ? (
+        {loading ? (
+          <p className="p-6 text-sm text-ink-500">Carregando usuários…</p>
+        ) : users.length === 0 ? (
           <EmptyState title="Nenhum usuário encontrado" />
         ) : (
           <div className="overflow-x-auto">

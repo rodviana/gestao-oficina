@@ -1,26 +1,52 @@
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import {
   ItemTypeLabel,
   PaymentStatusLabel,
   WorkOrderStatusLabel,
   formatDateTime,
   formatMoney,
-} from '../mock/labels';
-import { workOrderTotal } from '../mock/seed';
+} from '../constants/labels';
+import { workOrderTotal } from '../utils/workOrderUtils';
 import { EmptyState } from '../components/ui/PageElements';
+import { useAuth } from '../context/AuthContext';
+import { fetchWorkOrder } from '../services/workOrderService';
 
 export default function WorkOrderPrint() {
   const { id } = useParams();
-  const store = useMockStore();
-  const order = store.getWorkOrder(id);
+  const { session } = useAuth();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await fetchWorkOrder(session.token, id);
+        if (!cancelled) setOrder(data);
+      } catch {
+        if (!cancelled) setOrder(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id]);
+
+  if (loading) {
+    return <p className="p-6 text-sm text-ink-500">Carregando…</p>;
+  }
 
   if (!order) {
     return <EmptyState title="OS não encontrada" />;
   }
 
-  const customer = store.getCustomer(order.customerId);
-  const vehicle = store.getVehicle(order.vehicleId);
   const total = workOrderTotal(order);
 
   return (
@@ -50,15 +76,14 @@ export default function WorkOrderPrint() {
         <section className="mt-6 grid gap-4 text-sm sm:grid-cols-2">
           <div>
             <h2 className="font-semibold text-slate-900">Cliente</h2>
-            <p>{customer?.name}</p>
-            <p className="text-slate-600">Tel. {customer?.phone}</p>
-            {customer?.document && <p className="text-slate-600">Doc. {customer.document}</p>}
+            <p>{order.customerName}</p>
+            <p className="text-slate-600">Tel. {order.customerPhone}</p>
           </div>
           <div>
             <h2 className="font-semibold text-slate-900">Veículo</h2>
             <p>
-              {vehicle?.plate} — {vehicle?.brand} {vehicle?.model}{' '}
-              {vehicle?.year ? `(${vehicle.year})` : ''}
+              {order.vehiclePlate} — {order.vehicleBrand} {order.vehicleModel}{' '}
+              {order.vehicleYear ? `(${order.vehicleYear})` : ''}
             </p>
             <p className="text-slate-600">
               Status: {WorkOrderStatusLabel[order.status]} · Pagamento:{' '}
@@ -85,7 +110,7 @@ export default function WorkOrderPrint() {
               </tr>
             </thead>
             <tbody>
-              {order.items.map((item) => (
+              {(order.items || []).map((item) => (
                 <tr key={item.id} className="border-b border-slate-100">
                   <td className="py-2">{ItemTypeLabel[item.type]}</td>
                   <td className="py-2">{item.description}</td>
@@ -96,7 +121,7 @@ export default function WorkOrderPrint() {
                   </td>
                 </tr>
               ))}
-              {order.items.length === 0 && (
+              {(order.items || []).length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-4 text-slate-500">
                     Sem itens lançados.

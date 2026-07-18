@@ -22,9 +22,19 @@ export async function createUser(token, payload) {
   }, { token });
 }
 
-export async function fetchUserList(token, filters) {
+export async function fetchUserList(token, filters = {}) {
   return apiRequest('/api/v1/admin/users/list', {
     method: 'POST',
     body: JSON.stringify(filters),
   }, { token, showError: false });
+}
+
+export async function fetchMechanics(token) {
+  const data = await fetchUserList(token, {
+    role: 'MECHANIC',
+    activeFilter: 'ACTIVE',
+    page: 0,
+    pageSize: 100,
+  });
+  return data?.items ?? [];
 }

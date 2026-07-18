@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ItemType, ItemTypeLabel, formatMoney } from '../../../mock/labels';
+import { ItemType, ItemTypeLabel, formatMoney } from '../../../constants/labels';
 import { Card, EmptyState, FieldLabel, SelectInput, TextInput } from '../../../components/ui/PageElements';
 
 export default function WorkOrderItemsSection({

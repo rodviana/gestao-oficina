@@ -1,28 +1,26 @@
 package com.gestaooficina.service;
 
-import com.gestaooficina.exception.GlobalException;
-import com.gestaooficina.model.enums.ValidationMessageEnum;
+import com.gestaooficina.exception.GestaoOficinaForbiddenException;
 import com.gestaooficina.model.response.AdminPanelResponse;
-import com.gestaooficina.repository.AuthJdbcRepository;
-import com.gestaooficina.repository.filter.UserEmailFilter;
 import com.gestaooficina.model.record.UserRecord;
+import com.gestaooficina.repository.AuthRepository;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AdminPanelService {
 
-    private final AuthJdbcRepository authJdbcRepository;
+    private final AuthRepository authRepository;
 
-    public AdminPanelService(AuthJdbcRepository authJdbcRepository) {
-        this.authJdbcRepository = authJdbcRepository;
+    public AdminPanelService(AuthRepository authRepository) {
+        this.authRepository = authRepository;
     }
 
     public AdminPanelResponse getPanel(String email) {
-        UserRecord user = authJdbcRepository.findByEmail(new UserEmailFilter(email))
-                .orElseThrow(() -> GlobalException.of(ValidationMessageEnum.UNAUTHORIZED));
+        UserRecord user = authRepository.findByEmail(email)
+                .orElseThrow(() -> new GestaoOficinaForbiddenException("Não autorizado."));
 
-        if (!user.getRole().isAdmin()) {
-            throw GlobalException.of(ValidationMessageEnum.ACCESS_DENIED);
+        if (!user.isAdmin()) {
+            throw new GestaoOficinaForbiddenException("Acesso negado.");
         }
 
         return new AdminPanelResponse(

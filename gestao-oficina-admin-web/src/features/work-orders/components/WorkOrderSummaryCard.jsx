@@ -4,11 +4,23 @@ import {
   WorkOrderStatusLabel,
   WorkOrderStatusTone,
   formatDateTime,
-} from '../../../mock/labels';
+} from '../../../constants/labels';
 import { Card } from '../../../components/ui/PageElements';
 import { StatusBadge } from '../../../components/PrototypeChrome';
 
-export default function WorkOrderSummaryCard({ order, customer, vehicle, mechanic, creator }) {
+export default function WorkOrderSummaryCard({ order }) {
+  const customer = {
+    id: order.customerId,
+    name: order.customerName,
+    phone: order.customerPhone,
+  };
+  const vehicle = {
+    id: order.vehicleId,
+    plate: order.vehiclePlate,
+    brand: order.vehicleBrand,
+    model: order.vehicleModel,
+  };
+
   return (
     <Card className="lg:col-span-2 space-y-3">
       <div className="flex flex-wrap gap-2">
@@ -24,7 +36,7 @@ export default function WorkOrderSummaryCard({ order, customer, vehicle, mechani
         <div>
           <dt className="text-slate-500">Cliente</dt>
           <dd className="font-medium text-slate-900">
-            {customer ? (
+            {customer.id ? (
               <Link to={`/customers/${customer.id}`} className="text-signal hover:underline">
                 {customer.name}
               </Link>
@@ -32,12 +44,12 @@ export default function WorkOrderSummaryCard({ order, customer, vehicle, mechani
               '—'
             )}
           </dd>
-          <dd className="text-slate-500">{customer?.phone}</dd>
+          <dd className="text-slate-500">{customer.phone}</dd>
         </div>
         <div>
           <dt className="text-slate-500">Veículo</dt>
           <dd className="font-medium text-slate-900">
-            {vehicle ? (
+            {vehicle.id ? (
               <Link to={`/vehicles/${vehicle.id}`} className="text-signal hover:underline">
                 {vehicle.plate} — {vehicle.brand} {vehicle.model}
               </Link>
@@ -46,7 +58,7 @@ export default function WorkOrderSummaryCard({ order, customer, vehicle, mechani
             )}
           </dd>
           <dd>
-            {vehicle && (
+            {vehicle.id && (
               <Link to={`/vehicles/${vehicle.id}`} className="text-blue-600 hover:underline">
                 Ver veículo e histórico
               </Link>
@@ -55,12 +67,12 @@ export default function WorkOrderSummaryCard({ order, customer, vehicle, mechani
         </div>
         <div>
           <dt className="text-slate-500">Criada por</dt>
-          <dd className="font-medium">{creator?.name || '—'}</dd>
+          <dd className="font-medium">{order.createdByName || '—'}</dd>
           <dd className="text-slate-500">{formatDateTime(order.createdAt)}</dd>
         </div>
         <div>
           <dt className="text-slate-500">Mecânico</dt>
-          <dd className="font-medium">{mechanic?.name || 'Não atribuído'}</dd>
+          <dd className="font-medium">{order.mechanicName || 'Não atribuído'}</dd>
           <dd className="text-slate-500">Atualizado {formatDateTime(order.updatedAt)}</dd>
         </div>
       </dl>

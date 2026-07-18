@@ -35,15 +35,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 Claims claims = jwtService.parse(token);
                 String email = claims.getSubject();
+                String name = claims.get("name", String.class);
+                String role = claims.get("role", String.class);
+                Long id = toLong(claims.get("id"));
+
+                AuthenticatedUser user = new AuthenticatedUser(id, email, name, role);
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        email,
+                        user,
                         null,
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             } catch (JwtException ignored) {
                 SecurityContextHolder.clearContext();
             }
         }
         filterChain.doFilter(request, response);
+    }
+
+    private static Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(value.toString());
     }
 }

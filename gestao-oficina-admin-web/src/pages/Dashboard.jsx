@@ -1,10 +1,14 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
-import { buildWorkshopAnalytics } from '../mock/analytics';
-import { formatMoney } from '../mock/labels';
+import { buildWorkshopAnalytics } from '../utils/analytics';
+import { formatMoney } from '../constants/labels';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import { fetchAllPages } from '../services/pageUtils';
+import { fetchCustomers } from '../services/customerService';
+import { fetchVehicles } from '../services/vehicleService';
+import { fetchPartCatalog } from '../services/catalogService';
+import { fetchWorkOrdersForAnalytics } from '../services/workOrderService';
 import {
   EvolutionChart,
   MixDoughnut,
@@ -15,12 +19,54 @@ import { DashCard, EmptyChart, Kpi } from '../features/dashboard/components/Dash
 
 export default function Dashboard() {
   const { session } = useAuth();
-  const store = useMockStore();
-  const analytics = useMemo(() => buildWorkshopAnalytics(store), [store]);
+  const [loading, setLoading] = useState(true);
+  const [analyticsInput, setAnalyticsInput] = useState(null);
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const token = session.token;
+        const [orders, customers, vehicles, partsCatalog] = await Promise.all([
+          fetchWorkOrdersForAnalytics(token),
+          fetchAllPages((page, pageSize) => fetchCustomers(token, { page, pageSize })),
+          fetchAllPages((page, pageSize) => fetchVehicles(token, { page, pageSize })),
+          fetchPartCatalog(token),
+        ]);
+        if (!cancelled) {
+          setAnalyticsInput({ orders, customers, vehicles, partsCatalog });
+        }
+      } catch {
+        if (!cancelled) setAnalyticsInput({ orders: [], customers: [], vehicles: [], partsCatalog: [] });
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token]);
+
+  const analytics = useMemo(
+    () => buildWorkshopAnalytics(analyticsInput || {}),
+    [analyticsInput],
+  );
   const { kpis } = analytics;
 
   if (session?.role === UserRole.MECHANIC) {
     return <Navigate to="/pista" replace />;
+  }
+
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <p className="text-sm text-ink-500">Carregando dashboard…</p>
+      </div>
+    );
   }
 
   return (
@@ -28,7 +74,7 @@ export default function Dashboard() {
       <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-400">
-            Análise · protótipo
+            Análise · operação
           </p>
           <h1 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
             Dashboard

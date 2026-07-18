@@ -28,9 +28,7 @@ export async function login(loginId, password) {
 
   const data = body.data || {};
   const customer = {
-    // Orders/vehicles still come from mock data keyed by 'c-<n>'; the seed
-    // order matches the mock customers, so we bridge the id here for now.
-    id: `c-${data.customerId}`,
+    id: data.customerId,
     name: data.name,
     email: data.email,
     phone: data.phone,

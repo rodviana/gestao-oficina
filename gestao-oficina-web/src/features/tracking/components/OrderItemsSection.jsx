@@ -9,11 +9,11 @@ export default function OrderItemsSection({ order }) {
         <h2 className="font-display text-lg font-semibold text-shop-900">Serviços e peças</h2>
         <p className="font-display text-xl font-semibold text-shop-900">{formatMoney(total)}</p>
       </div>
-      {order.items.length === 0 ? (
+      {(order.items || []).length === 0 ? (
         <p className="mt-3 text-sm text-shop-500">Ainda sem itens lançados nesta OS.</p>
       ) : (
         <ul className="mt-4 divide-y divide-sand-100">
-          {order.items.map((item, index) => (
+          {(order.items || []).map((item, index) => (
             <li key={index} className="flex items-start justify-between gap-3 py-3 text-sm">
               <div>
                 <p className="font-semibold text-shop-900">{item.description}</p>

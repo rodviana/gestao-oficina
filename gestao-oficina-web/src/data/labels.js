@@ -68,6 +68,7 @@ export function normalizePhone(phone) {
 }
 
 export function workOrderTotal(order) {
+  if (order?.total != null) return Number(order.total);
   return (order.items || []).reduce(
     (sum, item) => sum + Number(item.quantity) * Number(item.unitPrice),
     0,

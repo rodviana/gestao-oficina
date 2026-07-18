@@ -1,6 +1,8 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { customerOwnsOrder, getOrderById } from '../../../data/tracking';
+import { getSessionToken } from '../../../data/auth';
 import StatusTimeline from '../components/StatusTimeline';
 import OrderItemsSection from '../components/OrderItemsSection';
 
@@ -19,21 +21,82 @@ function MessageScreen({ title, description, to, cta }) {
 export default function TrackDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { customer, isAuthenticated } = useAuth();
-  const order = getOrderById(id);
+  const [order, setOrder] = useState(location.state?.order ?? null);
+  const [loading, setLoading] = useState(!location.state?.order);
+  const [error, setError] = useState(null);
 
-  if (!order) {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      if (location.state?.order) {
+        setOrder(location.state.order);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const token = isAuthenticated ? getSessionToken() : null;
+        const found = await getOrderById(id, { token });
+        if (!cancelled) {
+          setOrder(found);
+          if (!found) setError('not_found');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Erro ao carregar a OS.');
+          setOrder(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isAuthenticated, location.state?.order]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center text-shop-500">
+        Carregando ordem de serviço…
+      </div>
+    );
+  }
+
+  if (error === 'not_found' || !order) {
     return (
       <MessageScreen
         title="OS não encontrada"
-        description="O link pode estar incorreto ou expirado."
-        to={isAuthenticated ? '/conta' : '/'}
+        description={
+          isAuthenticated
+            ? 'O link pode estar incorreto ou a OS não pertence à sua conta.'
+            : 'O link pode estar incorreto ou expirado. Consulte novamente com OS e placa.'
+        }
+        to={isAuthenticated ? '/conta' : '/consulta'}
         cta="Voltar"
       />
     );
   }
 
-  if (isAuthenticated && !customerOwnsOrder(customer.id, order.id)) {
+  if (error) {
+    return (
+      <MessageScreen
+        title="Erro ao carregar"
+        description={error}
+        to={isAuthenticated ? '/conta' : '/consulta'}
+        cta="Voltar"
+      />
+    );
+  }
+
+  if (isAuthenticated && !customerOwnsOrder(customer.id, order.id, order)) {
     return (
       <MessageScreen
         title="Acesso negado"
@@ -65,9 +128,11 @@ export default function TrackDetailPage() {
           {order.vehicle?.brand} {order.vehicle?.model}
           {order.vehicle?.year ? ` · ${order.vehicle.year}` : ''}
         </p>
-        <p className="mt-3 text-sm text-shop-700">
-          Cliente: <strong>{order.customer?.name}</strong>
-        </p>
+        {order.customer?.name && (
+          <p className="mt-3 text-sm text-shop-700">
+            Cliente: <strong>{order.customer.name}</strong>
+          </p>
+        )}
       </header>
 
       <StatusTimeline

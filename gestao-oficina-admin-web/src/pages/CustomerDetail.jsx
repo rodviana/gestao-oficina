@@ -1,14 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useMockStore } from '../mock/MockStore';
 import {
   PaymentStatusLabel,
   WorkOrderStatusLabel,
   WorkOrderStatusTone,
   formatDate,
   formatMoney,
-} from '../mock/labels';
-import { workOrderTotal } from '../mock/seed';
+} from '../constants/labels';
+import { workOrderTotal } from '../utils/workOrderUtils';
 import {
   Card,
   EmptyState,
@@ -20,31 +19,67 @@ import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { showSuccess } from '../services/apiClient';
+import { fetchCustomer, updateCustomer } from '../services/customerService';
+import { fetchVehiclesByCustomer } from '../services/vehicleService';
+import { fetchAllWorkOrders } from '../services/workOrderService';
 
 export default function CustomerDetail() {
   const { id } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const store = useMockStore();
   const navigate = useNavigate();
   const { session } = useAuth();
   const canEdit = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
 
-  const customer = store.getCustomer(id);
+  const [customer, setCustomer] = useState(null);
+  const [vehicles, setVehicles] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const editing = searchParams.get('edit') === '1' && canEdit;
 
-  const vehicles = useMemo(
-    () => (customer ? store.listVehicles({ customerId: customer.id }) : []),
-    [store, customer],
-  );
-  const orders = useMemo(
-    () => (customer ? store.listWorkOrders({ customerId: customer.id }) : []),
-    [store, customer],
-  );
-
-  const [name, setName] = useState(customer?.name || '');
-  const [phone, setPhone] = useState(customer?.phone || '');
-  const [document, setDocument] = useState(customer?.document || '');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [document, setDocument] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!session?.token) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const [customerData, vehicleData, allOrders] = await Promise.all([
+          fetchCustomer(session.token, id),
+          fetchVehiclesByCustomer(session.token, id),
+          fetchAllWorkOrders(session.token, { pageSize: 100 }),
+        ]);
+        if (cancelled) return;
+        setCustomer(customerData);
+        setVehicles(vehicleData);
+        setOrders(allOrders.filter((wo) => String(wo.customerId) === String(id)));
+        setName(customerData.name || '');
+        setPhone(customerData.phone || '');
+        setDocument(customerData.document || '');
+      } catch {
+        if (!cancelled) setCustomer(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id]);
+
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <p className="text-sm text-ink-500">Carregando cliente…</p>
+      </div>
+    );
+  }
 
   if (!customer) {
     return (
@@ -75,16 +110,26 @@ export default function CustomerDetail() {
     setError('');
   }
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault();
     setError('');
     if (!name.trim() || !phone.trim()) {
       setError('Nome e telefone são obrigatórios.');
       return;
     }
-    store.saveCustomer({ id: customer.id, name, phone, document });
-    showSuccess('Cliente atualizado.');
-    setSearchParams({});
+    try {
+      const updated = await updateCustomer(session.token, customer.id, {
+        name: name.trim(),
+        phone: phone.trim(),
+        document: document.trim(),
+        active: customer.active !== false,
+      });
+      setCustomer(updated);
+      showSuccess('Cliente atualizado.');
+      setSearchParams({});
+    } catch (err) {
+      setError(err.message || 'Não foi possível salvar.');
+    }
   }
 
   return (
@@ -225,29 +270,26 @@ export default function CustomerDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map((wo) => {
-                      const vehicle = store.getVehicle(wo.vehicleId);
-                      return (
-                        <tr
-                          key={wo.id}
-                          className="cursor-pointer"
-                          onClick={() => navigate(`/work-orders/${wo.id}`)}
-                        >
-                          <td className="font-display font-bold text-signal">{wo.number}</td>
-                          <td>{vehicle?.plate}</td>
-                          <td>{formatDate(wo.createdAt)}</td>
-                          <td>
-                            <StatusBadge
-                              label={WorkOrderStatusLabel[wo.status]}
-                              tone={WorkOrderStatusTone[wo.status]}
-                            />
-                          </td>
-                          <td className="text-right font-bold">
-                            {formatMoney(workOrderTotal(wo))}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {orders.map((wo) => (
+                      <tr
+                        key={wo.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/work-orders/${wo.id}`)}
+                      >
+                        <td className="font-display font-bold text-signal">{wo.number}</td>
+                        <td>{wo.vehiclePlate || '—'}</td>
+                        <td>{formatDate(wo.createdAt)}</td>
+                        <td>
+                          <StatusBadge
+                            label={WorkOrderStatusLabel[wo.status]}
+                            tone={WorkOrderStatusTone[wo.status]}
+                          />
+                        </td>
+                        <td className="text-right font-bold">
+                          {formatMoney(workOrderTotal(wo))}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
