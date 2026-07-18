@@ -45,12 +45,12 @@ services:
       retries: 12
       start_period: 60s
 
-  client:
+  admin:
     build:
-      context: ./client
+      context: ./gestao-oficina-admin-web
       args:
         VITE_API_URL: ""
-    container_name: gestao-oficina-web
+    container_name: gestao-oficina-admin
     ports:
       - "3000:80"
     networks:
@@ -58,6 +58,14 @@ services:
     depends_on:
       server:
         condition: service_healthy
+
+  portal:
+    build: ./gestao-oficina-web
+    container_name: gestao-oficina-portal
+    ports:
+      - "3001:80"
+    networks:
+      - gestao-oficina
 
 networks:
   gestao-oficina:

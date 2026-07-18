@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-0: #eef2f6;
+    --bg-1: #f7f9fb;
+    --ink: #0f161e;
+    --signal: #e85d04;
+  }
+
+  body {
+    @apply min-h-screen font-sans text-ink-900 antialiased;
+    background:
+      radial-gradient(ellipse 80% 50% at 10% -10%, rgba(232, 93, 4, 0.08), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(42, 56, 69, 0.06), transparent 45%),
+      linear-gradient(180deg, #f4f6f8 0%, #eef2f6 100%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgba(232, 93, 4, 0.2);
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full rounded-xl border border-ink-200/80 bg-white px-3.5 py-2.5 text-sm text-ink-900 shadow-sm transition placeholder:text-ink-400 focus:border-signal focus:outline-none focus:ring-2 focus:ring-signal/20;
+  }
+
+  .select-field {
+    @apply input-field appearance-none bg-[length:1rem] bg-[right_0.75rem_center] bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%237a8a9a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98];
+  }
+
+  .btn-primary {
+    @apply btn bg-signal text-white shadow-soft hover:bg-signal-strong focus:ring-signal;
+  }
+
+  .btn-secondary {
+    @apply btn border border-ink-200 bg-white text-ink-700 shadow-sm hover:border-ink-300 hover:bg-ink-50 focus:ring-ink-400;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-ink-100/80 focus:ring-ink-400;
+  }
+
+  .card {
+    @apply rounded-2xl border border-ink-200/70 bg-white/90 shadow-soft backdrop-blur-sm;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-600 transition duration-200 hover:bg-ink-100/80 hover:text-ink-900;
+  }
+
+  .nav-item-active {
+    @apply bg-ink-900 text-white shadow-soft hover:bg-ink-800 hover:text-white;
+  }
+
+  .nav-item-active span:first-child {
+    @apply !bg-signal/20 !text-signal-muted;
+  }
+
+  .page-shell {
+    @apply animate-fade-up space-y-6;
+  }
+
+  .kanban-column {
+    @apply flex min-h-[28rem] w-[min(100%,280px)] shrink-0 flex-col rounded-2xl border border-ink-200/60 bg-ink-50/80;
+  }
+
+  .kanban-column-drop {
+    @apply ring-2 ring-signal/40 bg-signal-soft/40;
+  }
+
+  .kanban-card {
+    @apply cursor-grab rounded-xl border border-ink-200/80 bg-white p-3.5 shadow-sm transition duration-200 hover:border-ink-300 hover:shadow-lift active:cursor-grabbing;
+  }
+
+  .kanban-card-dragging {
+    @apply opacity-40 scale-95;
+  }
+
+  .status-pill {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide;
+  }
+
+  .table-shell {
+    @apply overflow-hidden rounded-2xl border border-ink-200/70 bg-white/90 shadow-soft;
+  }
+
+  .data-table {
+    @apply min-w-full text-left text-sm;
+  }
+
+  .data-table thead {
+    @apply bg-ink-900 text-[11px] font-semibold uppercase tracking-wider text-ink-300;
+  }
+
+  .data-table th {
+    @apply px-4 py-3.5 font-semibold;
+  }
+
+  .data-table tbody {
+    @apply divide-y divide-ink-100;
+  }
+
+  .data-table td {
+    @apply px-4 py-3.5 text-ink-700;
+  }
+
+  .data-table tbody tr {
+    @apply transition hover:bg-signal-soft/30;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+}

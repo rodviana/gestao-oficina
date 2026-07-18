@@ -40,9 +40,10 @@ Quando uma funcionalidade estiver clara, ela entra no [documento de requisitos](
 
 ```
 gestao-oficina/
-├── docs/           # Documentação
-├── server/         # API Java (Spring Boot)
-├── client/         # Telas React
+├── docs/                       # Documentação
+├── server/                     # API Java (Spring Boot)
+├── gestao-oficina-admin-web/   # Sistema interno da oficina (staff)
+├── gestao-oficina-web/         # Portal do cliente (conta + histórico + consulta rápida)
 └── docker-compose.yml
 ```
 
@@ -69,6 +70,44 @@ controller/  →  service/  →  repository/
 
 ## Como rodar
 
+### Protótipo de telas (só front, dados mockados)
+
+Cobre o MVP (RF-01 a RF-14) sem API nem Docker:
+
+```bash
+cd gestao-oficina-admin-web
+npm install
+npm run dev
+```
+
+Abra http://localhost:5173 — login com um perfil pronto (admin / atendente / mecânico).
+
+### Portal do cliente (conta + histórico)
+
+Front separado do staff. Com conta: login, OS em andamento, histórico e veículos. Sem conta: consulta rápida por OS + placa ou telefone.
+
+Com Docker (junto do resto):
+
+```bash
+docker compose up --build --force-recreate --remove-orphans
+```
+
+Portal: http://localhost:3001
+
+**Contas demo:** `roberto@email.com` / `ana@email.com` / `marcos@email.com` — senha `123456`
+
+Só o portal em local:
+
+```bash
+cd gestao-oficina-web
+npm install
+npm run dev
+```
+
+http://localhost:5174
+
+### Stack completa (Docker)
+
 Tudo roda no **Docker** — você não precisa instalar Java nem Node na máquina.
 
 Passo a passo completo: **[docs/setup.md](./docs/setup.md)**
@@ -82,6 +121,7 @@ docker compose up --build --force-recreate --remove-orphans
 | O quê | Onde abrir |
 |-------|------------|
 | Telas do sistema | http://localhost:3000 |
+| Portal do cliente (conta + histórico) | http://localhost:3001 |
 | Swagger (testar API) | http://localhost:3000/swagger-ui/index.html |
 
 **Login de teste:** `admin@oficina.com` / `admin123`

@@ -290,7 +290,7 @@ try {
 ## Front (React) — estrutura
 
 ```
-client/src/
+gestao-oficina-admin-web/src/
 ├── pages/       # Uma tela principal por arquivo
 ├── components/  # Pedacinhos reutilizáveis (layout, toast…)
 ├── services/    # Chamadas HTTP (apiClient, authService…)
@@ -318,7 +318,7 @@ Use como cola na parede:
 - [ ] Interface + `*JdbcRepositoryImpl` se tiver banco
 - [ ] Procedure SQL em `resources/database/` se precisar
 - [ ] Mensagem nova em `ValidationMessageEnum` (PT + EN)
-- [ ] Tela em `client/src/pages/` + chamada em `services/`
+- [ ] Tela em `gestao-oficina-admin-web/src/pages/` + chamada em `services/`
 - [ ] Requisito anotado em [requirements.md](./requirements.md)
 
 ---

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply min-h-screen bg-sand-50 font-sans text-shop-900 antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(61, 107, 79, 0.12), transparent),
+      radial-gradient(ellipse 40% 30% at 100% 100%, rgba(230, 221, 208, 0.8), transparent);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .field {
+    @apply w-full rounded-2xl border border-shop-200/80 bg-white px-4 py-3.5 text-base text-shop-900 shadow-sm outline-none transition placeholder:text-shop-500/50 focus:border-shop-500 focus:ring-4 focus:ring-shop-500/15;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-base font-semibold transition active:scale-[0.98] disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-shop-700 text-white shadow-soft hover:bg-shop-900;
+  }
+
+  .btn-ghost {
+    @apply btn text-shop-700 hover:bg-shop-100;
+  }
+}

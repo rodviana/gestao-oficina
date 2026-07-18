@@ -110,6 +110,7 @@ Com os containers rodando:
 | O quê | URL |
 |-------|-----|
 | **Telas** (login, admin, etc.) | http://localhost:3000 |
+| **Portal do cliente** (conta + histórico) | http://localhost:3001 |
 | **API direta** | http://localhost:8080 |
 | **Swagger** (testar endpoints) | http://localhost:3000/swagger-ui/index.html |
 
@@ -186,7 +187,7 @@ docker compose up --build --force-recreate --remove-orphans
 
 O Docker Desktop não está aberto. Abre o app e espera ficar pronto.
 
-### Porta 3000 ou 8080 em uso
+### Porta 3000, 3001 ou 8080 em uso
 
 Outro programa está usando a porta. Fecha ele ou muda o mapeamento no `docker-compose.yml` (formato `porta-do-pc:porta-do-container`).
 

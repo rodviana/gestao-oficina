@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
-client/dist/
+gestao-oficina-admin-web/dist/
+gestao-oficina-web/dist/
 
 # Build
 server/target/

@@ -35,6 +35,8 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 
 **Pronto quando:** for possível registrar cliente e veículo, abrir e conduzir uma ordem de serviço, lançar itens, saber valor e pagamento, e consultar o histórico do veículo.
 
+**Protótipo de telas:** front com dados mockados cobrindo RF-01 a RF-14 — ver [README](../README.md#protótipo-de-telas-só-front-dados-mockados).
+
 **Fora do MVP:** controlar estoque, compras, emissão fiscal, agenda, comissões, app mobile, integrações externas (WhatsApp etc.), multilojas, indicadores avançados.
 
 ---
@@ -57,6 +59,8 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 | [RF-12](#rf-12--manter-catálogos-de-serviços-e-peças) | Manter catálogos de serviços e peças | Ideia |
 | [RF-13](#rf-13--emitir-comprovante-ou-orçamento-da-ordem-de-serviço) | Emitir comprovante ou orçamento da ordem de serviço | Ideia |
 | [RF-14](#rf-14--visualizar-o-panorama-das-ordens-em-andamento) | Visualizar o panorama das ordens em andamento | Ideia |
+| [RF-15](#rf-15--permitir-ao-cliente-acompanhar-a-ordem-de-serviço) | Permitir ao cliente acompanhar a ordem de serviço | Ideia |
+| [RF-16](#rf-16--permitir-ao-cliente-acessar-conta-com-histórico-de-atendimentos) | Permitir ao cliente acessar conta com histórico de atendimentos | Em desenvolvimento |
 
 ---
 
@@ -214,13 +218,14 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 - **Prioridade:** Alta
 - **Problema:** O atendimento precisa registrar o que foi feito e o que foi aplicado.
 - **Quem usa:** Quem atende no balcão e administra o sistema.
-- **O sistema deve:** permitir incluir, alterar e remover itens de mão de obra e peças na OS enquanto ela estiver aberta a alteração.
+- **O sistema deve:** permitir incluir, alterar e remover itens de mão de obra e peças na OS enquanto ela estiver aberta a alteração. Para peças, o preço cobrado é informado na hora do lançamento (pode variar por OS).
 - **Fora por enquanto:** baixa automática de estoque; kits; markup.
 - **Pra considerar pronto:**
   - [ ] Lançar itens de serviço e de peça.
+  - [ ] Informar preço da peça no lançamento da OS.
   - [ ] Alterar e remover itens quando permitido.
   - [ ] Impedir alteração em OS encerrada/cancelada.
-- **No código:** —
+- **No código:** protótipo em detalhe da OS (`gestao-oficina-admin-web/`).
 - **Validado com a oficina em:** —
 
 ---
@@ -262,14 +267,14 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 - **Status:** Ideia
 - **Prioridade:** Média
 - **Problema:** Itens recorrentes não devem ser redigitados do zero.
-- **Quem usa:** Admin mantém; atendente usa no lançamento.
-- **O sistema deve:** permitir manter listas de serviços e peças com valores de referência para uso nas ordens de serviço.
+- **Quem usa:** Admin/atendente mantém; balcão usa no lançamento.
+- **O sistema deve:** permitir manter listas de serviços e de peças. Em serviços, valor de referência pode pré-preencher o lançamento. Em peças, o catálogo guarda só o nome; o preço cobrado é informado na OS.
 - **Fora por enquanto:** estoque; fornecedor; tabela por modelo de carro.
 - **Pra considerar pronto:**
   - [ ] Manter catálogo de serviços.
-  - [ ] Manter catálogo de peças.
+  - [ ] Manter módulo/cadastro de peças.
   - [ ] Usar o catálogo ao lançar item na OS.
-- **No código:** —
+- **No código:** `gestao-oficina-admin-web/` — `/catalogs` (serviços) e `/parts` (peças).
 - **Validado com a oficina em:** —
 
 ---
@@ -301,6 +306,43 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
   - [ ] Visão das OS ativas por situação.
   - [ ] Acesso rápido ao detalhe da OS.
 - **No código:** —
+- **Validado com a oficina em:** —
+
+---
+
+## RF-15 — Permitir ao cliente acompanhar a ordem de serviço
+
+- **Status:** Ideia
+- **Prioridade:** Média
+- **Problema:** O cliente quer saber em que pé está o carro sem ligar o tempo todo.
+- **Quem usa:** Cliente da oficina (com ou sem conta).
+- **O sistema deve:** permitir consultar o andamento da OS de forma simples, sem login, a partir de identificadores do atendimento (ex.: número da OS + placa, ou telefone).
+- **Fora por enquanto:** chat, pagamento online, push notification, alteração de dados pelo cliente.
+- **Pra considerar pronto:**
+  - [ ] Consulta sem autenticação.
+  - [ ] Exibir status, veículo, relato, itens/total e histórico de andamento.
+  - [ ] Não expor dados de outros clientes.
+- **No código:** protótipo em `gestao-oficina-web/` (rota `/consulta`).
+- **Validado com a oficina em:** —
+
+---
+
+## RF-16 — Permitir ao cliente acessar conta com histórico de atendimentos
+
+- **Status:** Em desenvolvimento
+- **Prioridade:** Média
+- **Problema:** O cliente quer ver tudo o que já fez na oficina (todas as OS e veículos), não só a OS da vez.
+- **Quem usa:** Cliente da oficina com conta.
+- **O sistema deve:** autenticar o cliente (e-mail/telefone + senha) e exibir painel com OS em andamento, histórico completo e veículos vinculados.
+- **Fora por enquanto:** cadastro self-service, recuperação de senha, chat, pagamento online, push.
+- **Pra considerar pronto:**
+  - [x] Login com e-mail ou telefone + senha (protótipo mock).
+  - [x] Painel com OS ativas e resumo do histórico.
+  - [x] Histórico completo com filtros (status / veículo).
+  - [x] Lista de veículos do cliente.
+  - [x] Detalhe da OS só se pertencer à conta (quando logado).
+  - [ ] Conta e senha reais no backend (hoje só mock no portal).
+- **No código:** protótipo em `gestao-oficina-web/` (rotas `/login`, `/conta`).
 - **Validado com a oficina em:** —
 
 ---
