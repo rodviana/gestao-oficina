@@ -14,6 +14,7 @@ DROP FUNCTION IF EXISTS fn_customer_find_by_id(BIGINT);
 DROP FUNCTION IF EXISTS fn_customer_search(VARCHAR, INT, INT);
 DROP FUNCTION IF EXISTS fn_customer_count_search(VARCHAR);
 DROP FUNCTION IF EXISTS fn_customer_insert(VARCHAR, VARCHAR, VARCHAR);
+DROP FUNCTION IF EXISTS fn_customer_insert(VARCHAR, VARCHAR, VARCHAR, VARCHAR, VARCHAR);
 DROP FUNCTION IF EXISTS fn_customer_update(BIGINT, VARCHAR, VARCHAR, VARCHAR, BOOLEAN);
 DROP FUNCTION IF EXISTS fn_customer_find_by_phone(VARCHAR);
 -- vehicle_count foi adicionado ao retorno; DROP acima garante recriação limpa

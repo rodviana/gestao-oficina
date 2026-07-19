@@ -39,7 +39,7 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 
 **Paginação:** listagens usam páginas numeradas de **20** itens. Listas globais/pesquisáveis são paginadas no servidor (`PageResultDTO`: `items`, `totalNumber`, `pageNumber`, `pageSize`, `pageMaxNumber` — página zero-based). Sublistas embutidas no detalhe (itens da OS, timeline) usam paginação no cliente. Ver [architecture.md](./architecture.md#paginação).
 
-**Fora do MVP:** controlar estoque, compras, emissão fiscal, agenda, comissões, app mobile, integrações externas (WhatsApp etc.), multilojas, indicadores avançados.
+**Fora do MVP:** controlar estoque, compras, emissão fiscal, agenda, comissões, app mobile, multilojas, indicadores avançados. Notificações por mensagem (WhatsApp/SMS/e-mail) foram promovidas a requisito próprio ([RF-18](#rf-18--notificar-o-cliente-por-mensagem-sobre-a-ordem-de-serviço)).
 
 ---
 
@@ -63,6 +63,8 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 | [RF-14](#rf-14--visualizar-o-panorama-das-ordens-em-andamento) | Visualizar o panorama das ordens em andamento | Concluído |
 | [RF-15](#rf-15--permitir-ao-cliente-acompanhar-a-ordem-de-serviço) | Permitir ao cliente acompanhar a ordem de serviço | Concluído |
 | [RF-16](#rf-16--permitir-ao-cliente-acessar-conta-com-histórico-de-atendimentos) | Permitir ao cliente acessar conta com histórico de atendimentos | Concluído |
+| [RF-17](#rf-17--criar-conta-do-portal-ao-cadastrar-o-cliente) | Criar conta do portal ao cadastrar o cliente | Concluído |
+| [RF-18](#rf-18--notificar-o-cliente-por-mensagem-sobre-a-ordem-de-serviço) | Notificar o cliente por mensagem sobre a ordem de serviço | Aprovado |
 
 ---
 
@@ -345,6 +347,44 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
   - [x] Detalhe da OS só se pertencer à conta (quando logado).
   - [x] Conta e senha reais no backend (hoje só mock no portal).
 - **No código:** Login `customer_account` + `/api/v1/web/me/*`
+- **Validado com a oficina em:** —
+
+---
+
+## RF-17 — Criar conta do portal ao cadastrar o cliente
+
+- **Status:** Concluído
+- **Prioridade:** Alta
+- **Problema:** Cliente cadastrado no balcão não conseguia acessar o portal — a conta (`customer_account`) só existia via seed manual no banco.
+- **Quem usa:** Quem atende no balcão; beneficia o cliente da oficina.
+- **O sistema deve:** ao cadastrar um cliente no admin, criar automaticamente a conta do portal com e-mail (obrigatório) e senha temporária gerada pelo sistema, exibida uma única vez para o atendente repassar ao cliente.
+- **Fora por enquanto:** troca de senha pelo cliente, recuperação de senha, conta para clientes já cadastrados (sistema ainda não lançado — todos os clientes terão conta pelo fluxo novo), edição do e-mail da conta.
+- **Pra considerar pronto:**
+  - [x] E-mail obrigatório no cadastro de cliente.
+  - [x] Senha temporária gerada automaticamente (não persistida em claro).
+  - [x] Cliente e conta criados na mesma transação (`fn_customer_insert`).
+  - [x] Credenciais exibidas uma única vez no admin, com ação de copiar.
+  - [x] E-mail duplicado bloqueado com erro claro.
+- **No código:** `fn_customer_insert` (customers + customer_account) · `CustomerService.create` · tela `CustomerForm`
+- **Validado com a oficina em:** —
+
+---
+
+## RF-18 — Notificar o cliente por mensagem sobre a ordem de serviço
+
+- **Status:** Aprovado
+- **Prioridade:** Média
+- **Problema:** O cliente precisa ficar sabendo do andamento da OS sem ligar para a oficina; hoje o acompanhamento é só por consulta (pull) no portal.
+- **Quem usa:** Cliente da oficina; a oficina configura os disparos.
+- **O sistema deve:** enviar mensagens ao cliente por **WhatsApp, SMS e/ou e-mail** nos eventos relevantes: criação da conta do portal (credenciais/link de acesso), abertura da OS e mudanças de status (ex.: pronta, entregue).
+- **Fora por enquanto:** chat bidirecional, push notification em app, confirmação de leitura, campanhas de marketing.
+- **Pra considerar pronto:**
+  - [ ] Disparo na criação da conta com link do portal e credenciais.
+  - [ ] Disparo na abertura da OS e em mudanças de status.
+  - [ ] Pelo menos um canal (WhatsApp, SMS ou e-mail) integrado de ponta a ponta.
+  - [ ] Falha no envio não pode bloquear a operação (cadastro/OS seguem normalmente).
+  - [ ] Registro dos envios (log/auditoria simples).
+- **No código:** — (ponto de gancho: `work_order_status_history` / fluxo de atualização de status)
 - **Validado com a oficina em:** —
 
 ---

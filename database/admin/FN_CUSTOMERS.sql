@@ -5,6 +5,7 @@
 DROP FUNCTION IF EXISTS fn_customer_find_by_id(BIGINT);
 DROP FUNCTION IF EXISTS fn_customer_search(VARCHAR, INT, INT);
 DROP FUNCTION IF EXISTS fn_customer_find_by_phone(VARCHAR);
+DROP FUNCTION IF EXISTS fn_customer_insert(VARCHAR, VARCHAR, VARCHAR);
 
 CREATE OR REPLACE FUNCTION fn_customer_find_by_id(p_id BIGINT)
 RETURNS TABLE (
@@ -97,10 +98,13 @@ AS $$
       AND LENGTH(regexp_replace(COALESCE(p_phone, ''), '\D', '', 'g')) >= 8;
 $$;
 
+-- Cria o cliente e a conta do portal (customer_account) na mesma transação.
 CREATE OR REPLACE FUNCTION fn_customer_insert(
     p_name VARCHAR,
     p_document VARCHAR,
-    p_phone VARCHAR
+    p_phone VARCHAR,
+    p_email VARCHAR,
+    p_password_hash VARCHAR
 )
 RETURNS BIGINT
 LANGUAGE plpgsql
@@ -108,9 +112,17 @@ AS $$
 DECLARE
     v_id BIGINT;
 BEGIN
+    IF EXISTS (SELECT 1 FROM customer_account a WHERE LOWER(a.email) = LOWER(TRIM(p_email))) THEN
+        RAISE EXCEPTION 'E-mail já cadastrado para outro cliente.';
+    END IF;
+
     INSERT INTO customers (name, document, phone)
     VALUES (TRIM(p_name), NULLIF(TRIM(p_document), ''), TRIM(p_phone))
     RETURNING id INTO v_id;
+
+    INSERT INTO customer_account (customer_id, email, password)
+    VALUES (v_id, LOWER(TRIM(p_email)), p_password_hash);
+
     RETURN v_id;
 END;
 $$;

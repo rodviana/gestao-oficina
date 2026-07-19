@@ -15,7 +15,7 @@ public interface CustomerRepository {
 
     List<CustomerDTO> search(String search, int page, int pageSize);
 
-    Long insert(String name, String document, String phone);
+    Long insert(String name, String document, String phone, String email, String passwordHash);
 
     void update(Long id, String name, String document, String phone, Boolean active);
 }

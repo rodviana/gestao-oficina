@@ -112,6 +112,12 @@ public final class UserValidationUtils {
         }
     }
 
+    public static void requireValidEmail(String email, String message) {
+        if (!isValidEmail(email)) {
+            throw new GestaoOficinaGenericException(message);
+        }
+    }
+
     public static void requirePositiveId(Long id, String message) {
         if (id == null || id <= 0) {
             throw new GestaoOficinaGenericException(message);

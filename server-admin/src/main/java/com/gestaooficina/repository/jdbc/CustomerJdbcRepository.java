@@ -20,7 +20,7 @@ public class CustomerJdbcRepository implements CustomerRepository {
     private static final String SQL_FIND_BY_PHONE = "SELECT * FROM fn_customer_find_by_phone(?)";
     private static final String SQL_COUNT = "SELECT fn_customer_count_search(?)";
     private static final String SQL_SEARCH = "SELECT * FROM fn_customer_search(?, ?, ?)";
-    private static final String SQL_INSERT = "SELECT fn_customer_insert(?, ?, ?)";
+    private static final String SQL_INSERT = "SELECT fn_customer_insert(?, ?, ?, ?, ?)";
     private static final String SQL_UPDATE = "SELECT fn_customer_update(?, ?, ?, ?, ?)";
 
     private final JdbcProcedureExecutor executor;
@@ -55,9 +55,9 @@ public class CustomerJdbcRepository implements CustomerRepository {
     }
 
     @Override
-    public Long insert(String name, String document, String phone) {
+    public Long insert(String name, String document, String phone, String email, String passwordHash) {
         try {
-            return executor.queryScalar(SQL_INSERT, Long.class, name, document, phone);
+            return executor.queryScalar(SQL_INSERT, Long.class, name, document, phone, email, passwordHash);
         } catch (DataAccessException e) {
             throw jdbcError(e, "Falha ao criar cliente.");
         }

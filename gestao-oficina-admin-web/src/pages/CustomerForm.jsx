@@ -14,8 +14,10 @@ export default function CustomerForm() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [document, setDocument] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(isEdit);
+  const [createdAccount, setCreatedAccount] = useState(null);
 
   useEffect(() => {
     if (!isEdit || !session?.token) return undefined;
@@ -45,19 +47,40 @@ export default function CustomerForm() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError('');
-    if (!name.trim() || !phone.trim()) {
-      setError('Nome e telefone são obrigatórios.');
+    if (!name.trim() || !phone.trim() || (!isEdit && !email.trim())) {
+      setError(
+        isEdit
+          ? 'Nome e telefone são obrigatórios.'
+          : 'Nome, telefone e e-mail são obrigatórios.',
+      );
       return;
     }
     try {
       const payload = { name: name.trim(), phone: phone.trim(), document: document.trim() };
-      const saved = isEdit
-        ? await updateCustomer(session.token, id, { ...payload, active: true })
-        : await createCustomer(session.token, payload);
-      showSuccess(isEdit ? 'Cliente atualizado.' : 'Cliente cadastrado.');
-      navigate(saved?.id ? `/customers/${saved.id}` : '/customers');
+      if (isEdit) {
+        const saved = await updateCustomer(session.token, id, { ...payload, active: true });
+        showSuccess('Cliente atualizado.');
+        navigate(saved?.id ? `/customers/${saved.id}` : '/customers');
+        return;
+      }
+      const created = await createCustomer(session.token, {
+        ...payload,
+        email: email.trim(),
+      });
+      showSuccess('Cliente cadastrado com conta do portal.');
+      setCreatedAccount(created);
     } catch (err) {
       setError(err.message || 'Não foi possível salvar.');
+    }
+  }
+
+  async function copyCredentials() {
+    const text = `Portal da oficina\nLogin: ${createdAccount.portalEmail}\nSenha: ${createdAccount.temporaryPassword}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      showSuccess('Credenciais copiadas.');
+    } catch {
+      setError('Não foi possível copiar. Anote as credenciais manualmente.');
     }
   }
 
@@ -65,12 +88,55 @@ export default function CustomerForm() {
     return <p className="p-6 text-sm text-ink-500">Carregando…</p>;
   }
 
+  if (createdAccount) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          eyebrow="RF-04"
+          title="Cliente cadastrado"
+          description="Conta do portal criada. A senha abaixo é exibida só uma vez — copie e envie ao cliente."
+        />
+        <Card>
+          <div className="mx-auto max-w-lg space-y-4">
+            <div className="rounded-xl bg-ink-50 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-400">Login do portal</p>
+              <p className="mt-1 font-mono text-sm text-ink-900">{createdAccount.portalEmail}</p>
+            </div>
+            <div className="rounded-xl bg-ink-50 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-ink-400">Senha temporária</p>
+              <p className="mt-1 font-mono text-lg font-bold text-ink-900">
+                {createdAccount.temporaryPassword}
+              </p>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-primary" onClick={copyCredentials}>
+                Copiar credenciais
+              </button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => navigate(`/customers/${createdAccount.customer.id}`)}
+              >
+                Ir para o cliente
+              </button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="RF-04"
         title={isEdit ? 'Editar cliente' : 'Novo cliente'}
-        description="Dados mínimos para o atendimento."
+        description={
+          isEdit
+            ? 'Dados mínimos para o atendimento.'
+            : 'Ao cadastrar, uma conta do portal é criada automaticamente para o cliente.'
+        }
         backTo="/customers"
       />
 
@@ -84,6 +150,17 @@ export default function CustomerForm() {
             <FieldLabel htmlFor="phone">Telefone</FieldLabel>
             <TextInput id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
+          {!isEdit && (
+            <div>
+              <FieldLabel htmlFor="email">E-mail (login do portal)</FieldLabel>
+              <TextInput
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+          )}
           <div>
             <FieldLabel htmlFor="document">Documento (opcional)</FieldLabel>
             <TextInput id="document" value={document} onChange={(e) => setDocument(e.target.value)} />
