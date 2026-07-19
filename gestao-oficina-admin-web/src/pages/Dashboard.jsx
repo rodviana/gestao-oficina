@@ -112,25 +112,6 @@ export default function Dashboard() {
         />
       </section>
 
-      <section className="rounded-2xl border border-ink-200/70 bg-white p-4 shadow-soft sm:p-5">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <h2 className="font-display text-lg font-bold text-ink-900">Meta do mês</h2>
-            <p className="text-sm text-ink-500">
-              Pago em {formatMoney(kpis.thisMonthPaid)} de {formatMoney(kpis.monthlyGoal)} ·{' '}
-              {kpis.thisMonthOrders} OS neste mês
-            </p>
-          </div>
-          <span className="font-display text-xl font-bold text-signal">{kpis.goalProgress}%</span>
-        </div>
-        <div className="h-3 overflow-hidden rounded-full bg-ink-100">
-          <div
-            className="h-full rounded-full bg-signal transition-all"
-            style={{ width: `${kpis.goalProgress}%` }}
-          />
-        </div>
-      </section>
-
       <section className="grid gap-4 lg:grid-cols-3">
         <DashCard
           className="lg:col-span-2"

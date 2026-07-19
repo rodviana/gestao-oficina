@@ -62,7 +62,7 @@ export function buildWorkshopAnalytics({ orders = [], customers = [], vehicles =
   const ticketMedio = paid.length > 0 ? revenuePaid / paid.length : 0;
 
   const statusBreakdown = Object.values(WorkOrderStatus)
-    .filter((s) => s !== WorkOrderStatus.CANCELLED)
+    .filter((s) => s !== WorkOrderStatus.CANCELLED && s !== WorkOrderStatus.DELIVERED)
     .map((code) => ({
       code,
       label: WorkOrderStatusLabel[code],
@@ -140,12 +140,6 @@ export function buildWorkshopAnalytics({ orders = [], customers = [], vehicles =
     paidRevenueData: evolutionKeys.map((k) => monthMap.get(k).paidRevenue),
   };
 
-  const now = new Date();
-  const thisMonthKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-  const thisMonth = monthMap.get(thisMonthKey) || { orders: 0, revenue: 0, paidRevenue: 0 };
-  const monthlyGoal = 8000;
-  const goalProgress = Math.min(100, Math.round((thisMonth.paidRevenue / monthlyGoal) * 100));
-
   return {
     kpis: {
       activeOrders: activeOrders.length,
@@ -158,10 +152,6 @@ export function buildWorkshopAnalytics({ orders = [], customers = [], vehicles =
       revenueOpen,
       ticketMedio,
       waitingPayment: waitingPayment.length,
-      thisMonthOrders: thisMonth.orders,
-      thisMonthPaid: thisMonth.paidRevenue,
-      monthlyGoal,
-      goalProgress,
     },
     statusBreakdown,
     paymentBreakdown,
