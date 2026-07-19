@@ -16,7 +16,7 @@ import {
   TextInput,
 } from '../components/ui/PageElements';
 import { Pagination } from '../components/ui/Pagination';
-import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
+import { StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { showSuccess } from '../services/apiClient';
@@ -131,7 +131,6 @@ export default function CustomerDetail() {
   if (!customer) {
     return (
       <div className="page-shell">
-        <PrototypeBanner />
         <EmptyState
           title="Cliente não encontrado"
           action={
@@ -181,7 +180,6 @@ export default function CustomerDetail() {
 
   return (
     <div className="page-shell">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="Cliente · RF-04"
         title={customer.name}

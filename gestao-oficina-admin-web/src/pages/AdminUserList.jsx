@@ -12,7 +12,6 @@ import {
   TextInput,
 } from '../components/ui/PageElements';
 import { Pagination } from '../components/ui/Pagination';
-import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { usePagedSearch } from '../hooks/usePagedSearch';
 import { fetchUserList } from '../services/authService';
@@ -44,7 +43,6 @@ export default function AdminUserList() {
 
   return (
     <div className="space-y-6">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="RF-02 · RF-03"
         title="Usuários"

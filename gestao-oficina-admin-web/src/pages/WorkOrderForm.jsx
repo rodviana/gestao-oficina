@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, FieldLabel, PageHeader, SelectInput } from '../components/ui/PageElements';
-import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { showSuccess } from '../services/apiClient';
 import { fetchAllPages } from '../services/pageUtils';
@@ -109,7 +108,6 @@ export default function WorkOrderForm() {
 
   return (
     <div className="space-y-6">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="RF-07"
         title="Nova ordem de serviço"

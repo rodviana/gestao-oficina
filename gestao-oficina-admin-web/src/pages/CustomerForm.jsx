@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card, FieldLabel, PageHeader, TextInput } from '../components/ui/PageElements';
-import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { createCustomer, fetchCustomer, updateCustomer } from '../services/customerService';
 import { showSuccess } from '../services/apiClient';
@@ -68,7 +67,6 @@ export default function CustomerForm() {
 
   return (
     <div className="space-y-6">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="RF-04"
         title={isEdit ? 'Editar cliente' : 'Novo cliente'}

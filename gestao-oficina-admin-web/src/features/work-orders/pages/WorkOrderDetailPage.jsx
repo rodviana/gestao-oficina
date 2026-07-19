@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom';
 import { WorkOrderStatus } from '../../../constants/labels';
 import { workOrderTotal } from '../../../utils/workOrderUtils';
 import { EmptyState, PageHeader } from '../../../components/ui/PageElements';
-import { PrototypeBanner } from '../../../components/PrototypeChrome';
 import { useAuth } from '../../../context/AuthContext';
 import { UserRole } from '../../../constants/userRole';
 import { showSuccess } from '../../../services/apiClient';
@@ -97,7 +96,6 @@ export default function WorkOrderDetailPage() {
   if (!order) {
     return (
       <div className="space-y-6">
-        <PrototypeBanner />
         <EmptyState title="OS não encontrada" />
       </div>
     );
@@ -127,7 +125,6 @@ export default function WorkOrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="RF-07 · RF-08 · RF-09 · RF-10 · RF-13"
         title={order.number}

@@ -19,7 +19,7 @@ import {
   TextInput,
 } from '../components/ui/PageElements';
 import { Pagination } from '../components/ui/Pagination';
-import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
+import { StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
@@ -53,7 +53,6 @@ export default function WorkOrderList() {
 
   return (
     <div className="page-shell">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="Lista · RF-07"
         title="Ordens de serviço"

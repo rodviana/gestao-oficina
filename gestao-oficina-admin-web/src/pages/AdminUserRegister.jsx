@@ -8,7 +8,6 @@ import {
   SelectInput,
   TextInput,
 } from '../components/ui/PageElements';
-import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { createUser } from '../services/authService';
 import { showSuccess } from '../services/apiClient';
@@ -40,7 +39,6 @@ export default function AdminUserRegister() {
 
   return (
     <div className="space-y-6">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="RF-02"
         title="Novo usuário"

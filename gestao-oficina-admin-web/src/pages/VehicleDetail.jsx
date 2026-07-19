@@ -18,7 +18,7 @@ import {
   TextInput,
 } from '../components/ui/PageElements';
 import { Pagination } from '../components/ui/Pagination';
-import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
+import { StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { showSuccess } from '../services/apiClient';
@@ -125,7 +125,6 @@ export default function VehicleDetail() {
   if (!vehicle) {
     return (
       <div className="page-shell">
-        <PrototypeBanner />
         <EmptyState
           title="Veículo não encontrado"
           action={
@@ -181,7 +180,6 @@ export default function VehicleDetail() {
 
   return (
     <div className="page-shell">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="Veículo · RF-05 · RF-11"
         title={vehicle.plate}

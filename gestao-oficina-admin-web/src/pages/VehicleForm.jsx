@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Card, FieldLabel, PageHeader, SelectInput, TextInput } from '../components/ui/PageElements';
-import { PrototypeBanner } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { fetchAllPages } from '../services/pageUtils';
 import { fetchCustomers } from '../services/customerService';
@@ -96,7 +95,6 @@ export default function VehicleForm() {
 
   return (
     <div className="space-y-6">
-      <PrototypeBanner />
       <PageHeader
         eyebrow="RF-05"
         title={isEdit ? 'Editar veículo' : 'Novo veículo'}
