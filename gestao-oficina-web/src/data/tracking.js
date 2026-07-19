@@ -1,6 +1,8 @@
 import { apiFetch } from './api';
 import { getSessionToken } from './auth';
 import { STATUS, normalizePlate } from './labels';
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
+import { buildQuery, emptyPageResult, normalizePageResult } from './pageUtils';
 
 const PUBLIC_ORDER_KEY = 'gestao-oficina-public-order';
 
@@ -10,6 +12,15 @@ const ACTIVE = new Set([
   STATUS.WAITING_PARTS,
   STATUS.READY,
 ]);
+
+const STATUS_GROUP_MAP = {
+  all: 'ALL',
+  ALL: 'ALL',
+  active: 'ACTIVE',
+  ACTIVE: 'ACTIVE',
+  history: 'HISTORY',
+  HISTORY: 'HISTORY',
+};
 
 function mapItem(item) {
   return {
@@ -76,6 +87,32 @@ export function mapOrder(dto) {
   };
 }
 
+function mapVehicle(vehicle) {
+  if (!vehicle) return null;
+  return {
+    id: vehicle.id,
+    plate: vehicle.plate,
+    brand: vehicle.brand,
+    model: vehicle.model,
+    year: vehicle.year,
+    active: vehicle.active,
+    createdAt: vehicle.createdAt,
+    orderCount: Number(vehicle.orderCount ?? 0),
+    lastOrder:
+      vehicle.lastOrderNumber || vehicle.lastOrderAt
+        ? {
+            number: vehicle.lastOrderNumber,
+            updatedAt: vehicle.lastOrderAt,
+          }
+        : null,
+  };
+}
+
+function normalizeStatusGroup(statusGroup) {
+  if (statusGroup == null || statusGroup === '') return 'ALL';
+  return STATUS_GROUP_MAP[statusGroup] || 'ALL';
+}
+
 function cachePublicOrder(order) {
   if (!order?.id) return;
   sessionStorage.setItem(`${PUBLIC_ORDER_KEY}-${order.id}`, JSON.stringify(order));
@@ -119,36 +156,72 @@ export async function getOrderById(id, { token = getSessionToken() } = {}) {
   return readCachedPublicOrder(orderId);
 }
 
-export async function getOrdersByCustomerId() {
+/**
+ * Lista paginada de OS do cliente autenticado.
+ * @param {{ statusGroup?: string, vehicleId?: string|number|null, page?: number, pageSize?: number }} [opts]
+ */
+export async function getOrdersByCustomerId({
+  statusGroup = 'ALL',
+  vehicleId,
+  page = 0,
+  pageSize = DEFAULT_PAGE_SIZE,
+} = {}) {
   const token = getSessionToken();
-  if (!token) return [];
+  if (!token) return emptyPageResult(pageSize);
 
-  const list = await apiFetch('/api/v1/web/me/orders', { auth: true, token });
-  return (list || [])
-    .map(mapOrder)
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const qs = buildQuery({
+    statusGroup: normalizeStatusGroup(statusGroup),
+    vehicleId: vehicleId === 'all' || vehicleId == null || vehicleId === '' ? undefined : vehicleId,
+    page,
+    pageSize,
+  });
+  const data = await apiFetch(`/api/v1/web/me/orders${qs}`, { auth: true, token });
+  const pageResult = normalizePageResult(data);
+  return {
+    ...pageResult,
+    items: (pageResult.items || []).map(mapOrder).filter(Boolean),
+  };
 }
 
-export async function getVehiclesByCustomerId(orders = null) {
+/** Lista paginada de veículos do cliente autenticado. */
+export async function getVehiclesPage({ page = 0, pageSize = DEFAULT_PAGE_SIZE } = {}) {
   const token = getSessionToken();
-  if (!token) return [];
+  if (!token) return emptyPageResult(pageSize);
 
-  const list = await apiFetch('/api/v1/web/me/vehicles', { auth: true, token });
-  const orderList = orders || (await getOrdersByCustomerId());
+  const qs = buildQuery({ page, pageSize });
+  const data = await apiFetch(`/api/v1/web/me/vehicles${qs}`, { auth: true, token });
+  const pageResult = normalizePageResult(data);
+  return {
+    ...pageResult,
+    items: (pageResult.items || []).map(mapVehicle).filter(Boolean),
+  };
+}
 
-  return (list || []).map((vehicle) => {
-    const vehicleOrders = orderList.filter((wo) => wo.vehicleId === vehicle.id);
+/** Contadores do portfólio do cliente autenticado. */
+export async function getCustomerSummary() {
+  const token = getSessionToken();
+  if (!token) {
     return {
-      ...vehicle,
-      orderCount: vehicleOrders.length,
-      lastOrder: vehicleOrders[0] || null,
+      vehicleCount: 0,
+      activeOrderCount: 0,
+      historyOrderCount: 0,
+      totalOrderCount: 0,
     };
-  });
+  }
+
+  const data = await apiFetch('/api/v1/web/me/summary', { auth: true, token });
+  return {
+    vehicleCount: Number(data?.vehicleCount ?? 0),
+    activeOrderCount: Number(data?.activeOrderCount ?? 0),
+    historyOrderCount: Number(data?.historyOrderCount ?? 0),
+    totalOrderCount: Number(data?.totalOrderCount ?? 0),
+  };
 }
 
 export function splitActiveAndHistory(orders) {
-  const active = orders.filter((wo) => ACTIVE.has(wo.status));
-  const history = orders.filter((wo) => !ACTIVE.has(wo.status));
+  const list = Array.isArray(orders) ? orders : [];
+  const active = list.filter((wo) => ACTIVE.has(wo.status));
+  const history = list.filter((wo) => !ACTIVE.has(wo.status));
   return { active, history };
 }
 

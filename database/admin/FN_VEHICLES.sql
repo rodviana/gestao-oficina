@@ -47,7 +47,23 @@ AS $$
       AND v.active = TRUE;
 $$;
 
-CREATE OR REPLACE FUNCTION fn_vehicle_find_by_customer(p_customer_id BIGINT)
+DROP FUNCTION IF EXISTS fn_vehicle_find_by_customer(BIGINT);
+
+CREATE OR REPLACE FUNCTION fn_vehicle_count_by_customer(p_customer_id BIGINT)
+RETURNS BIGINT
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT COUNT(*)
+    FROM vehicles v
+    WHERE v.customer_id = p_customer_id;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_vehicle_find_by_customer(
+    p_customer_id BIGINT,
+    p_page INT,
+    p_page_size INT
+)
 RETURNS TABLE (
     id BIGINT,
     customer_id BIGINT,
@@ -59,15 +75,23 @@ RETURNS TABLE (
     active BOOLEAN,
     created_at TIMESTAMP
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
+DECLARE
+    v_page INT := GREATEST(COALESCE(p_page, 0), 0);
+    v_size INT := LEAST(GREATEST(COALESCE(p_page_size, 20), 1), 100);
+BEGIN
+    RETURN QUERY
     SELECT v.id, v.customer_id, c.name AS customer_name, v.plate, v.brand, v.model,
            v.year, v.active, v.created_at
     FROM vehicles v
     INNER JOIN customers c ON c.id = v.customer_id
     WHERE v.customer_id = p_customer_id
-    ORDER BY v.plate;
+    ORDER BY v.plate
+    OFFSET v_page * v_size
+    LIMIT v_size;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION fn_vehicle_count_search(p_search VARCHAR)

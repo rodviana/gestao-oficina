@@ -7,7 +7,9 @@ import java.util.Optional;
 
 public interface PartCatalogRepository {
 
-    List<PartCatalogDTO> list(Boolean onlyActive);
+    long count(Boolean onlyActive, String search);
+
+    List<PartCatalogDTO> list(Boolean onlyActive, String search, int page, int pageSize);
 
     Optional<PartCatalogDTO> findById(Long id);
 

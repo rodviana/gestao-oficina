@@ -12,7 +12,9 @@ import {
 } from '../../constants/labels';
 import { workOrderTotal } from '../../utils/workOrderUtils';
 import { useAuth } from '../../context/AuthContext';
+import { useClientPagination } from '../../hooks/useClientPagination';
 import { fetchWorkOrder } from '../../services/workOrderService';
+import { Pagination } from '../ui/Pagination';
 import { StatusBadge } from '../PrototypeChrome';
 
 /**
@@ -64,6 +66,13 @@ export default function WorkOrderSummaryModal({ order, onClose }) {
   const history = detail?.history || [];
   const services = items.filter((i) => (i.type ?? i.itemTypeCode) === ItemType.SERVICE);
   const parts = items.filter((i) => (i.type ?? i.itemTypeCode) === ItemType.PART);
+  const sortedItems = [...services, ...parts];
+  const itemsPage = useClientPagination(sortedItems, {
+    resetKey: `${wo.id}-${sortedItems.length}`,
+  });
+  const historyPage = useClientPagination(history, {
+    resetKey: `${wo.id}-h-${history.length}`,
+  });
 
   function openInNewTab() {
     window.open(`/work-orders/${wo.id}`, '_blank', 'noopener');
@@ -142,21 +151,36 @@ export default function WorkOrderSummaryModal({ order, onClose }) {
                   Nenhum item lançado ainda.
                 </p>
               ) : (
-                <ul className="mt-2 divide-y divide-ink-100 rounded-xl border border-ink-100">
-                  {[...services, ...parts].map((item) => (
-                    <li key={item.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-ink-800">{item.description}</p>
-                        <p className="text-[11px] text-ink-400">
-                          {item.itemTypeLabel} · {Number(item.quantity)} × {formatMoney(item.unitPrice)}
+                <>
+                  <ul className="mt-2 divide-y divide-ink-100 rounded-xl border border-ink-100">
+                    {itemsPage.items.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-ink-800">{item.description}</p>
+                          <p className="text-[11px] text-ink-400">
+                            {item.itemTypeLabel} · {Number(item.quantity)} ×{' '}
+                            {formatMoney(item.unitPrice)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold tabular-nums text-ink-900">
+                          {formatMoney(
+                            item.lineTotal ?? Number(item.quantity) * Number(item.unitPrice),
+                          )}
                         </p>
-                      </div>
-                      <p className="shrink-0 text-sm font-semibold tabular-nums text-ink-900">
-                        {formatMoney(item.lineTotal ?? Number(item.quantity) * Number(item.unitPrice))}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                      </li>
+                    ))}
+                  </ul>
+                  <Pagination
+                    page={itemsPage.page}
+                    pageMaxNumber={itemsPage.pageMaxNumber}
+                    totalNumber={itemsPage.total}
+                    pageSize={itemsPage.pageSize}
+                    onPageChange={itemsPage.setPage}
+                  />
+                </>
               )}
             </section>
           )}
@@ -164,10 +188,10 @@ export default function WorkOrderSummaryModal({ order, onClose }) {
           {history.length > 0 && (
             <section>
               <p className="text-[11px] font-bold uppercase tracking-wide text-ink-400">
-                Últimas movimentações
+                Movimentações
               </p>
               <ul className="mt-2 space-y-1.5">
-                {history.slice(0, 3).map((entry) => (
+                {historyPage.items.map((entry) => (
                   <li key={entry.id} className="flex items-center gap-2 text-xs text-ink-600">
                     <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-signal" />
                     <span className="font-semibold">{entry.statusLabel}</span>
@@ -178,6 +202,13 @@ export default function WorkOrderSummaryModal({ order, onClose }) {
                   </li>
                 ))}
               </ul>
+              <Pagination
+                page={historyPage.page}
+                pageMaxNumber={historyPage.pageMaxNumber}
+                totalNumber={historyPage.total}
+                pageSize={historyPage.pageSize}
+                onPageChange={historyPage.setPage}
+              />
             </section>
           )}
         </div>

@@ -22,8 +22,8 @@ import java.util.Optional;
 public class WorkOrderJdbcRepository implements WorkOrderRepository {
 
     private static final String SQL_FIND = "SELECT * FROM fn_work_order_find_by_id(?)";
-    private static final String SQL_COUNT = "SELECT fn_work_order_count(?)";
-    private static final String SQL_LIST = "SELECT * FROM fn_work_order_list(?, ?, ?)";
+    private static final String SQL_COUNT = "SELECT fn_work_order_count(?, ?, ?, ?)";
+    private static final String SQL_LIST = "SELECT * FROM fn_work_order_list(?, ?, ?, ?, ?, ?)";
     private static final String SQL_INSERT = "SELECT fn_work_order_insert(?, ?, ?, ?, ?)";
     private static final String SQL_UPDATE_STATUS = "SELECT fn_work_order_update_status(?, ?, ?, ?)";
     private static final String SQL_UPDATE_PAYMENT = "SELECT fn_work_order_update_payment(?, ?)";
@@ -52,9 +52,10 @@ public class WorkOrderJdbcRepository implements WorkOrderRepository {
     }
 
     @Override
-    public long count(String statusCode) {
+    public long count(String statusCode, String paymentStatusCode, String search, Long customerId) {
         try {
-            Long total = executor.queryScalar(SQL_COUNT, Long.class, statusCode);
+            Long total = executor.queryScalar(
+                    SQL_COUNT, Long.class, statusCode, paymentStatusCode, search, customerId);
             return total != null ? total : 0L;
         } catch (DataAccessException e) {
             throw jdbcError(e, "Falha ao contar ordens de serviço.");
@@ -62,9 +63,12 @@ public class WorkOrderJdbcRepository implements WorkOrderRepository {
     }
 
     @Override
-    public List<WorkOrderSummaryDTO> list(String statusCode, int page, int pageSize) {
+    public List<WorkOrderSummaryDTO> list(String statusCode, String paymentStatusCode, String search,
+                                          Long customerId, int page, int pageSize) {
         try {
-            return executor.query(SQL_LIST, summaryRowMapper(), statusCode, page, pageSize);
+            return executor.query(
+                    SQL_LIST, summaryRowMapper(),
+                    statusCode, paymentStatusCode, search, customerId, page, pageSize);
         } catch (DataAccessException e) {
             throw jdbcError(e, "Falha ao listar ordens de serviço.");
         }

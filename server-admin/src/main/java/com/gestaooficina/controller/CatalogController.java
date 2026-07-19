@@ -37,9 +37,14 @@ public class CatalogController extends BaseController {
     @GetMapping(GestaoOficinaControllerMapping.CATALOGS_SERVICES)
     @Operation(summary = "List services")
     public ResponseEntity<HttpResponseEntityDTO<?>> listServices(
-            @RequestParam(required = false) Boolean onlyActive) {
+            @RequestParam(required = false) Boolean onlyActive,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
-            return ok(catalogService.listServices(onlyActive), "Services loaded.");
+            return ok(
+                    catalogService.listServices(onlyActive, search, page, pageSize),
+                    "Services loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {
@@ -82,9 +87,14 @@ public class CatalogController extends BaseController {
     @GetMapping(GestaoOficinaControllerMapping.CATALOGS_PARTS)
     @Operation(summary = "List parts")
     public ResponseEntity<HttpResponseEntityDTO<?>> listParts(
-            @RequestParam(required = false) Boolean onlyActive) {
+            @RequestParam(required = false) Boolean onlyActive,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
-            return ok(catalogService.listParts(onlyActive), "Parts loaded.");
+            return ok(
+                    catalogService.listParts(onlyActive, search, page, pageSize),
+                    "Parts loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {

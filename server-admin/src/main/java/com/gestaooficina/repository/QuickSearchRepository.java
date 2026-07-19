@@ -6,5 +6,7 @@ import java.util.List;
 
 public interface QuickSearchRepository {
 
-    List<QuickSearchResultDTO> search(String query);
+    long count(String query);
+
+    List<QuickSearchResultDTO> search(String query, int page, int pageSize);
 }

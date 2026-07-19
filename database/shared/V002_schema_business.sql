@@ -138,6 +138,9 @@ CREATE TABLE IF NOT EXISTS work_orders (
 CREATE INDEX IF NOT EXISTS idx_wo_customer ON work_orders (customer_id);
 CREATE INDEX IF NOT EXISTS idx_wo_vehicle ON work_orders (vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_wo_status ON work_orders (status_id);
+CREATE INDEX IF NOT EXISTS idx_wo_payment ON work_orders (payment_status_id);
+CREATE INDEX IF NOT EXISTS idx_wo_mechanic ON work_orders (mechanic_id);
+CREATE INDEX IF NOT EXISTS idx_wo_created_by ON work_orders (created_by_id);
 CREATE INDEX IF NOT EXISTS idx_wo_created_at ON work_orders (created_at);
 CREATE INDEX IF NOT EXISTS idx_wo_number ON work_orders (number);
 
@@ -161,10 +164,15 @@ CREATE TABLE IF NOT EXISTS work_order_items (
     CONSTRAINT fk_woi_part FOREIGN KEY (part_id) REFERENCES part_catalog (id),
     CONSTRAINT chk_woi_quantity CHECK (quantity > 0),
     CONSTRAINT chk_woi_unit_price CHECK (unit_price >= 0),
-    CONSTRAINT chk_woi_description CHECK (LENGTH(TRIM(description)) > 0)
+    CONSTRAINT chk_woi_description CHECK (LENGTH(TRIM(description)) > 0),
+    -- Um item referencia catálogo de serviço OU de peça, nunca os dois.
+    CONSTRAINT chk_woi_single_ref CHECK (service_id IS NULL OR part_id IS NULL)
 );
 
 CREATE INDEX IF NOT EXISTS idx_woi_order ON work_order_items (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_woi_type ON work_order_items (item_type_id);
+CREATE INDEX IF NOT EXISTS idx_woi_service ON work_order_items (service_id);
+CREATE INDEX IF NOT EXISTS idx_woi_part ON work_order_items (part_id);
 
 -- -----------------------------------------------------------------------------
 -- Histórico de mudanças de status da OS (timeline)
@@ -183,4 +191,6 @@ CREATE TABLE IF NOT EXISTS work_order_status_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_wosh_order ON work_order_status_history (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_wosh_status ON work_order_status_history (status_id);
+CREATE INDEX IF NOT EXISTS idx_wosh_changed_by ON work_order_status_history (changed_by_id);
 CREATE INDEX IF NOT EXISTS idx_wosh_changed_at ON work_order_status_history (changed_at);

@@ -29,8 +29,8 @@ public class VehicleService {
 
         String normalizedSearch = search != null ? search.trim() : null;
         long total = vehicleRepository.countSearch(normalizedSearch);
-        int pageMax = total <= 0 ? 0 : (int) ((total - 1) / safePageSize);
-        int resolvedPage = Math.min(safePage, pageMax);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
 
         List<VehicleDTO> items = vehicleRepository.search(normalizedSearch, resolvedPage, safePageSize);
         return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
@@ -48,14 +48,31 @@ public class VehicleService {
                 .orElseThrow(() -> new GestaoOficinaGenericException("Veículo não encontrado."));
     }
 
-    public List<VehicleDTO> findByCustomer(Long customerId) {
+    public PageResultDTO<VehicleDTO> findByCustomer(Long customerId, Integer page, Integer pageSize) {
         UserValidationUtils.requirePositiveId(customerId, "Cliente inválido.");
-        return vehicleRepository.findByCustomer(customerId);
+        int safePageSize = JdbcMappingUtils.clampPageSize(pageSize);
+        int safePage = JdbcMappingUtils.safePage(page);
+        UserValidationUtils.validatePagination(safePage, safePageSize);
+
+        long total = vehicleRepository.countByCustomer(customerId);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
+        List<VehicleDTO> items = vehicleRepository.findByCustomer(customerId, resolvedPage, safePageSize);
+        return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
     }
 
-    public List<WorkOrderSummaryDTO> findHistory(Long vehicleId) {
+    public PageResultDTO<WorkOrderSummaryDTO> findHistory(Long vehicleId, Integer page, Integer pageSize) {
         findById(vehicleId);
-        return vehicleRepository.findWorkOrderHistory(vehicleId);
+        int safePageSize = JdbcMappingUtils.clampPageSize(pageSize);
+        int safePage = JdbcMappingUtils.safePage(page);
+        UserValidationUtils.validatePagination(safePage, safePageSize);
+
+        long total = vehicleRepository.countWorkOrderHistory(vehicleId);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
+        List<WorkOrderSummaryDTO> items =
+                vehicleRepository.findWorkOrderHistory(vehicleId, resolvedPage, safePageSize);
+        return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
     }
 
     public VehicleDTO create(CreateVehicleRequest request) {

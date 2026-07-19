@@ -76,8 +76,8 @@ export function useWorkOrderItemForm({ orderId, token, services, parts, onChange
       showSuccess(itemTab === 'part' ? 'Peça lançada na OS.' : 'Serviço lançado.');
       setForm(emptyForm());
       await onChanged?.();
-    } catch (err) {
-      setForm((prev) => ({ ...prev, error: err.message }));
+    } catch {
+      // Erro de API já exibido via Toast pelo apiClient; nada a fazer aqui.
     }
   }
 
@@ -86,8 +86,8 @@ export function useWorkOrderItemForm({ orderId, token, services, parts, onChange
       await removeWorkOrderItem(token, itemId);
       showSuccess('Item removido.');
       await onChanged?.();
-    } catch (err) {
-      setForm((prev) => ({ ...prev, error: err.message }));
+    } catch {
+      // Erro de API já exibido via Toast pelo apiClient.
     }
   }
 

@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { formatMoney } from '../constants/labels';
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import {
   Card,
   FieldLabel,
@@ -8,9 +9,11 @@ import {
   SelectInput,
   TextInput,
 } from '../components/ui/PageElements';
+import { Pagination } from '../components/ui/Pagination';
 import { showSuccess } from '../services/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
+import { usePagedSearch } from '../hooks/usePagedSearch';
 import {
   createServiceCatalogItem,
   fetchServiceCatalog,
@@ -20,38 +23,19 @@ import {
 /** Catálogo de serviços (mão de obra). Peças ficam em /parts. */
 export default function CatalogPage() {
   const { session } = useAuth();
-  const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+  const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [editId, setEditId] = useState(null);
   const [active, setActive] = useState(true);
 
-  async function loadServices() {
-    if (!session?.token) return;
-    const data = await fetchServiceCatalog(session.token);
-    setServices(data);
-  }
-
-  useEffect(() => {
-    if (!session?.token) return undefined;
-    let cancelled = false;
-
-    (async () => {
-      setLoading(true);
-      try {
-        const data = await fetchServiceCatalog(session.token);
-        if (!cancelled) setServices(data);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.token]);
+  const { items, total, page, pageSize, pageMaxNumber, loading, setPage, reload } = usePagedSearch({
+    token: session?.token,
+    query: search,
+    pageSize: DEFAULT_PAGE_SIZE,
+    fetcher: (token, { search: q, page: p, pageSize: size }) =>
+      fetchServiceCatalog(token, { search: q, page: p, pageSize: size }),
+  });
 
   if (session?.role === UserRole.MECHANIC) {
     return <Navigate to="/pista" replace />;
@@ -91,7 +75,7 @@ export default function CatalogPage() {
       });
       showSuccess('Serviço cadastrado.');
     }
-    await loadServices();
+    await reload();
     resetForm();
   }
 
@@ -102,7 +86,10 @@ export default function CatalogPage() {
         title="Serviços"
         description="Catálogo de mão de obra com valor de referência para lançar nas OS."
         actions={
-          <Link to="/parts" className="btn-secondary !border-white/20 !bg-white/10 !text-white hover:!bg-white/20">
+          <Link
+            to="/parts"
+            className="btn-secondary !border-white/20 !bg-white/10 !text-white hover:!bg-white/20"
+          >
             Ir para Peças
           </Link>
         }
@@ -144,48 +131,67 @@ export default function CatalogPage() {
         </Card>
       )}
 
+      <Card>
+        <FieldLabel htmlFor="svc-q">Buscar</FieldLabel>
+        <TextInput
+          id="svc-q"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Nome do serviço"
+        />
+      </Card>
+
       <Card padding={false}>
         {loading ? (
           <p className="p-6 text-sm text-ink-500">Carregando serviços…</p>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th className="text-right">Preço</th>
-                <th>Situação</th>
-                {isAdmin && <th />}
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((row) => (
-                <tr key={row.id}>
-                  <td className="font-medium text-ink-900">{row.name}</td>
-                  <td className="text-right">{formatMoney(row.defaultPrice)}</td>
-                  <td>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        row.active ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-500'
-                      }`}
-                    >
-                      {row.active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  {isAdmin && (
-                    <td className="text-right">
-                      <button
-                        type="button"
-                        className="text-sm font-semibold text-signal hover:underline"
-                        onClick={() => startEdit(row)}
-                      >
-                        Editar
-                      </button>
-                    </td>
-                  )}
+          <>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th className="text-right">Preço</th>
+                  <th>Situação</th>
+                  {isAdmin && <th />}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((row) => (
+                  <tr key={row.id}>
+                    <td className="font-medium text-ink-900">{row.name}</td>
+                    <td className="text-right">{formatMoney(row.defaultPrice)}</td>
+                    <td>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          row.active ? 'bg-emerald-100 text-emerald-700' : 'bg-ink-100 text-ink-500'
+                        }`}
+                      >
+                        {row.active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    {isAdmin && (
+                      <td className="text-right">
+                        <button
+                          type="button"
+                          className="text-sm font-semibold text-signal hover:underline"
+                          onClick={() => startEdit(row)}
+                        >
+                          Editar
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pagination
+              page={page}
+              pageMaxNumber={pageMaxNumber}
+              totalNumber={total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </Card>
     </div>

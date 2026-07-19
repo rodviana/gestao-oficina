@@ -6,9 +6,12 @@ import KanbanBoard from '../components/kanban/KanbanBoard';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { quickSearch } from '../services/searchService';
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { fetchAllWorkOrders, updateWorkOrderStatus } from '../services/workOrderService';
-import { fetchVehiclesByCustomer } from '../services/vehicleService';
+import { fetchAllVehiclesByCustomer } from '../services/vehicleService';
 import { showSuccess } from '../services/apiClient';
+import { Pagination } from '../components/ui/Pagination';
+import { useClientPagination } from '../hooks/useClientPagination';
 
 const ACTIVE = [
   WorkOrderStatus.OPEN,
@@ -22,6 +25,7 @@ export default function Home() {
   const [query, setQuery] = useState('');
   const [searched, setSearched] = useState(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchPage, setSearchPage] = useState(0);
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [customerVehicles, setCustomerVehicles] = useState({});
@@ -33,7 +37,7 @@ export default function Home() {
     (async () => {
       setLoadingOrders(true);
       try {
-        const all = await fetchAllWorkOrders(session.token, { pageSize: 100 });
+        const all = await fetchAllWorkOrders(session.token, { pageSize: DEFAULT_PAGE_SIZE });
         if (!cancelled) setOrders(all);
       } catch {
         if (!cancelled) setOrders([]);
@@ -58,7 +62,7 @@ export default function Home() {
             return [customer.id, customer.vehicles];
           }
           try {
-            const vehicles = await fetchVehiclesByCustomer(session.token, customer.id);
+            const vehicles = await fetchAllVehiclesByCustomer(session.token, customer.id);
             return [customer.id, vehicles];
           } catch {
             return [customer.id, []];
@@ -77,6 +81,10 @@ export default function Home() {
     () => orders.filter((wo) => ACTIVE.includes(wo.status)),
     [orders],
   );
+  const kanbanPage = useClientPagination(activeOrders, {
+    pageSize: DEFAULT_PAGE_SIZE,
+    resetKey: activeOrders.length,
+  });
 
   const canCreate = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
   const readyCount = activeOrders.filter((w) => w.status === WorkOrderStatus.READY).length;
@@ -93,18 +101,35 @@ export default function Home() {
       return;
     }
     try {
-      const results = await quickSearch(session.token, q);
+      const results = await quickSearch(session.token, q, { page: 0, pageSize: DEFAULT_PAGE_SIZE });
       setSearched(results);
+      setSearchPage(0);
       setSearchOpen(true);
     } catch {
-      setSearched({ customers: [], vehicles: [] });
+      setSearched({ customers: [], vehicles: [], total: 0, pageMaxNumber: 0, pageSize: DEFAULT_PAGE_SIZE });
       setSearchOpen(true);
+    }
+  }
+
+  async function changeSearchPage(nextPage) {
+    const q = query.trim();
+    if (!q) return;
+    try {
+      const results = await quickSearch(session.token, q, {
+        page: nextPage,
+        pageSize: DEFAULT_PAGE_SIZE,
+      });
+      setSearched(results);
+      setSearchPage(results.page);
+    } catch {
+      /* toast via apiClient */
     }
   }
 
   function clearSearch() {
     setQuery('');
     setSearched(null);
+    setSearchPage(0);
     setSearchOpen(false);
     setCustomerVehicles({});
   }
@@ -190,56 +215,65 @@ export default function Home() {
                 description="Tente outra placa, telefone ou nome."
               />
             ) : (
-              searched.customers.map((c) => (
-                <div
-                  key={c.id}
-                  className="rounded-xl border border-ink-200/80 bg-ink-50/50 p-3"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <Link
-                        to={`/customers/${c.id}`}
-                        className="font-display text-base font-bold text-ink-900 hover:text-signal"
-                      >
-                        {c.name}
-                      </Link>
-                      <p className="text-xs text-ink-500">Tel. {c.phone || '—'}</p>
-                    </div>
-                    {canCreate && (
-                      <Link
-                        to={`/work-orders/new?customerId=${c.id}`}
-                        className="btn-primary !px-3 !py-1.5 !text-xs"
-                      >
-                        Nova OS
-                      </Link>
-                    )}
-                  </div>
-                  <ul className="mt-2 space-y-1.5">
-                    {(customerVehicles[c.id] || c.vehicles || []).map((v) => (
-                      <li
-                        key={v.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 text-sm ring-1 ring-ink-100"
-                      >
-                        <Link to={`/vehicles/${v.id}`} className="hover:text-signal">
-                          <strong className="font-display">{v.plate}</strong>
-                          <span className="text-ink-500">
-                            {' '}
-                            — {v.brand} {v.model}
-                          </span>
+              <>
+                {searched.customers.map((c) => (
+                  <div
+                    key={c.id}
+                    className="rounded-xl border border-ink-200/80 bg-ink-50/50 p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <Link
+                          to={`/customers/${c.id}`}
+                          className="font-display text-base font-bold text-ink-900 hover:text-signal"
+                        >
+                          {c.name}
                         </Link>
-                        {canCreate && (
-                          <Link
-                            to={`/work-orders/new?customerId=${c.id}&vehicleId=${v.id}`}
-                            className="text-xs font-bold text-signal hover:underline"
-                          >
-                            Abrir OS
+                        <p className="text-xs text-ink-500">Tel. {c.phone || '—'}</p>
+                      </div>
+                      {canCreate && (
+                        <Link
+                          to={`/work-orders/new?customerId=${c.id}`}
+                          className="btn-primary !px-3 !py-1.5 !text-xs"
+                        >
+                          Nova OS
+                        </Link>
+                      )}
+                    </div>
+                    <ul className="mt-2 space-y-1.5">
+                      {(customerVehicles[c.id] || c.vehicles || []).map((v) => (
+                        <li
+                          key={v.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-2.5 py-2 text-sm ring-1 ring-ink-100"
+                        >
+                          <Link to={`/vehicles/${v.id}`} className="hover:text-signal">
+                            <strong className="font-display">{v.plate}</strong>
+                            <span className="text-ink-500">
+                              {' '}
+                              — {v.brand} {v.model}
+                            </span>
                           </Link>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))
+                          {canCreate && (
+                            <Link
+                              to={`/work-orders/new?customerId=${c.id}&vehicleId=${v.id}`}
+                              className="text-xs font-bold text-signal hover:underline"
+                            >
+                              Abrir OS
+                            </Link>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                <Pagination
+                  page={searchPage}
+                  pageMaxNumber={searched.pageMaxNumber ?? 0}
+                  totalNumber={searched.total ?? 0}
+                  pageSize={searched.pageSize ?? DEFAULT_PAGE_SIZE}
+                  onPageChange={changeSearchPage}
+                />
+              </>
             )}
           </div>
         )}
@@ -248,13 +282,22 @@ export default function Home() {
       {loadingOrders ? (
         <p className="text-sm text-ink-500">Carregando quadro…</p>
       ) : (
-        <KanbanBoard
-          title="Quadro da pista"
-          canCreate={canCreate}
-          compactHeader
-          orders={activeOrders}
-          onStatusChange={handleStatusChange}
-        />
+        <>
+          <KanbanBoard
+            title="Quadro da pista"
+            canCreate={canCreate}
+            compactHeader
+            orders={kanbanPage.items}
+            onStatusChange={handleStatusChange}
+          />
+          <Pagination
+            page={kanbanPage.page}
+            pageMaxNumber={kanbanPage.pageMaxNumber}
+            totalNumber={kanbanPage.total}
+            pageSize={kanbanPage.pageSize}
+            onPageChange={kanbanPage.setPage}
+          />
+        </>
       )}
     </div>
   );

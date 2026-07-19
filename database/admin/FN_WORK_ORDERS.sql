@@ -59,21 +59,50 @@ AS $$
     WHERE wo.id = p_id;
 $$;
 
-CREATE OR REPLACE FUNCTION fn_work_order_count(p_status_code VARCHAR)
+-- Assinaturas antigas (só status) — removidas para evitar overload
+DROP FUNCTION IF EXISTS fn_work_order_count(VARCHAR);
+DROP FUNCTION IF EXISTS fn_work_order_list(VARCHAR, INT, INT);
+
+CREATE OR REPLACE FUNCTION fn_work_order_count(
+    p_status_code VARCHAR,
+    p_payment_status_code VARCHAR,
+    p_search VARCHAR,
+    p_customer_id BIGINT
+)
 RETURNS BIGINT
 LANGUAGE sql
 STABLE
 AS $$
     SELECT COUNT(*)
     FROM work_orders wo
+    INNER JOIN customers c ON c.id = wo.customer_id
+    INNER JOIN vehicles v ON v.id = wo.vehicle_id
     INNER JOIN work_order_status st ON st.id = wo.status_id
-    WHERE p_status_code IS NULL
-       OR TRIM(p_status_code) = ''
-       OR UPPER(TRIM(p_status_code)) = 'ALL'
-       OR st.code = UPPER(TRIM(p_status_code));
+    INNER JOIN payment_status ps ON ps.id = wo.payment_status_id
+    WHERE (p_status_code IS NULL
+           OR TRIM(p_status_code) = ''
+           OR UPPER(TRIM(p_status_code)) = 'ALL'
+           OR st.code = UPPER(TRIM(p_status_code)))
+      AND (p_payment_status_code IS NULL
+           OR TRIM(p_payment_status_code) = ''
+           OR UPPER(TRIM(p_payment_status_code)) = 'ALL'
+           OR ps.code = UPPER(TRIM(p_payment_status_code)))
+      AND (p_customer_id IS NULL OR wo.customer_id = p_customer_id)
+      AND (NULLIF(TRIM(p_search), '') IS NULL
+           OR LOWER(wo.number) LIKE '%' || LOWER(TRIM(p_search)) || '%'
+           OR LOWER(wo.description) LIKE '%' || LOWER(TRIM(p_search)) || '%'
+           OR UPPER(v.plate) LIKE '%' || UPPER(TRIM(p_search)) || '%'
+           OR LOWER(c.name) LIKE '%' || LOWER(TRIM(p_search)) || '%');
 $$;
 
-CREATE OR REPLACE FUNCTION fn_work_order_list(p_status_code VARCHAR, p_page INT, p_page_size INT)
+CREATE OR REPLACE FUNCTION fn_work_order_list(
+    p_status_code VARCHAR,
+    p_payment_status_code VARCHAR,
+    p_search VARCHAR,
+    p_customer_id BIGINT,
+    p_page INT,
+    p_page_size INT
+)
 RETURNS TABLE (
     id BIGINT,
     number VARCHAR,
@@ -112,10 +141,20 @@ BEGIN
     INNER JOIN work_order_status st ON st.id = wo.status_id
     INNER JOIN payment_status ps ON ps.id = wo.payment_status_id
     LEFT JOIN users m ON m.id = wo.mechanic_id
-    WHERE p_status_code IS NULL
-       OR TRIM(p_status_code) = ''
-       OR UPPER(TRIM(p_status_code)) = 'ALL'
-       OR st.code = UPPER(TRIM(p_status_code))
+    WHERE (p_status_code IS NULL
+           OR TRIM(p_status_code) = ''
+           OR UPPER(TRIM(p_status_code)) = 'ALL'
+           OR st.code = UPPER(TRIM(p_status_code)))
+      AND (p_payment_status_code IS NULL
+           OR TRIM(p_payment_status_code) = ''
+           OR UPPER(TRIM(p_payment_status_code)) = 'ALL'
+           OR ps.code = UPPER(TRIM(p_payment_status_code)))
+      AND (p_customer_id IS NULL OR wo.customer_id = p_customer_id)
+      AND (NULLIF(TRIM(p_search), '') IS NULL
+           OR LOWER(wo.number) LIKE '%' || LOWER(TRIM(p_search)) || '%'
+           OR LOWER(wo.description) LIKE '%' || LOWER(TRIM(p_search)) || '%'
+           OR UPPER(v.plate) LIKE '%' || UPPER(TRIM(p_search)) || '%'
+           OR LOWER(c.name) LIKE '%' || LOWER(TRIM(p_search)) || '%')
     ORDER BY wo.created_at DESC, wo.id DESC
     OFFSET v_page * v_size
     LIMIT v_size;
@@ -403,7 +442,23 @@ AS $$
     ORDER BY h.changed_at ASC, h.id ASC;
 $$;
 
-CREATE OR REPLACE FUNCTION fn_work_order_by_vehicle(p_vehicle_id BIGINT)
+DROP FUNCTION IF EXISTS fn_work_order_by_vehicle(BIGINT);
+
+CREATE OR REPLACE FUNCTION fn_work_order_count_by_vehicle(p_vehicle_id BIGINT)
+RETURNS BIGINT
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT COUNT(*)
+    FROM work_orders wo
+    WHERE wo.vehicle_id = p_vehicle_id;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_work_order_by_vehicle(
+    p_vehicle_id BIGINT,
+    p_page INT,
+    p_page_size INT
+)
 RETURNS TABLE (
     id BIGINT,
     number VARCHAR,
@@ -416,16 +471,24 @@ RETURNS TABLE (
     status_label VARCHAR,
     payment_status_code VARCHAR,
     payment_status_label VARCHAR,
+    mechanic_id BIGINT,
+    mechanic_name VARCHAR,
     total NUMERIC,
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
+DECLARE
+    v_page INT := GREATEST(COALESCE(p_page, 0), 0);
+    v_size INT := LEAST(GREATEST(COALESCE(p_page_size, 20), 1), 100);
+BEGIN
+    RETURN QUERY
     SELECT wo.id, wo.number, wo.customer_id, c.name,
            wo.vehicle_id, v.plate, wo.description,
            st.code, st.label, ps.code, ps.label,
+           wo.mechanic_id, m.name,
            fn_work_order_total(wo.id),
            wo.created_at, wo.updated_at
     FROM work_orders wo
@@ -433,8 +496,12 @@ AS $$
     INNER JOIN vehicles v ON v.id = wo.vehicle_id
     INNER JOIN work_order_status st ON st.id = wo.status_id
     INNER JOIN payment_status ps ON ps.id = wo.payment_status_id
+    LEFT JOIN users m ON m.id = wo.mechanic_id
     WHERE wo.vehicle_id = p_vehicle_id
-    ORDER BY wo.created_at DESC;
+    ORDER BY wo.created_at DESC
+    OFFSET v_page * v_size
+    LIMIT v_size;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION fn_work_order_panorama()
@@ -456,7 +523,37 @@ AS $$
     ORDER BY st.display_order;
 $$;
 
-CREATE OR REPLACE FUNCTION fn_quick_search(p_query VARCHAR)
+DROP FUNCTION IF EXISTS fn_quick_search(VARCHAR);
+
+CREATE OR REPLACE FUNCTION fn_quick_search_count(p_query VARCHAR)
+RETURNS BIGINT
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT COUNT(*)
+    FROM (
+        SELECT c.id
+        FROM customers c
+        WHERE c.active = TRUE
+          AND (
+              LOWER(c.name) LIKE '%' || LOWER(TRIM(p_query)) || '%'
+              OR c.phone LIKE '%' || regexp_replace(TRIM(p_query), '\D', '', 'g') || '%'
+              OR RIGHT(regexp_replace(c.phone, '\D', '', 'g'), 8)
+                 = RIGHT(regexp_replace(TRIM(p_query), '\D', '', 'g'), 8)
+          )
+        UNION ALL
+        SELECT v.id
+        FROM vehicles v
+        INNER JOIN customers c ON c.id = v.customer_id
+        WHERE v.active = TRUE
+          AND (
+              UPPER(v.plate) LIKE '%' || UPPER(TRIM(p_query)) || '%'
+              OR LOWER(v.brand || ' ' || v.model) LIKE '%' || LOWER(TRIM(p_query)) || '%'
+          )
+    ) q;
+$$;
+
+CREATE OR REPLACE FUNCTION fn_quick_search(p_query VARCHAR, p_page INT, p_page_size INT)
 RETURNS TABLE (
     result_type VARCHAR,
     id BIGINT,
@@ -465,36 +562,47 @@ RETURNS TABLE (
     customer_id BIGINT,
     vehicle_id BIGINT
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
-    SELECT 'CUSTOMER'::VARCHAR AS result_type,
-           c.id,
-           c.name AS label,
-           c.phone AS subtitle,
-           c.id AS customer_id,
-           NULL::BIGINT AS vehicle_id
-    FROM customers c
-    WHERE c.active = TRUE
-      AND (
-          LOWER(c.name) LIKE '%' || LOWER(TRIM(p_query)) || '%'
-          OR c.phone LIKE '%' || regexp_replace(TRIM(p_query), '\D', '', 'g') || '%'
-          OR RIGHT(regexp_replace(c.phone, '\D', '', 'g'), 8)
-             = RIGHT(regexp_replace(TRIM(p_query), '\D', '', 'g'), 8)
-      )
-    UNION ALL
-    SELECT 'VEHICLE'::VARCHAR,
-           v.id,
-           v.plate,
-           (v.brand || ' ' || v.model || ' — ' || c.name)::VARCHAR,
-           v.customer_id,
-           v.id
-    FROM vehicles v
-    INNER JOIN customers c ON c.id = v.customer_id
-    WHERE v.active = TRUE
-      AND (
-          UPPER(v.plate) LIKE '%' || UPPER(TRIM(p_query)) || '%'
-          OR LOWER(v.brand || ' ' || v.model) LIKE '%' || LOWER(TRIM(p_query)) || '%'
-      )
-    LIMIT 20;
+DECLARE
+    v_page INT := GREATEST(COALESCE(p_page, 0), 0);
+    v_size INT := LEAST(GREATEST(COALESCE(p_page_size, 20), 1), 100);
+BEGIN
+    RETURN QUERY
+    SELECT q.result_type, q.id, q.label, q.subtitle, q.customer_id, q.vehicle_id
+    FROM (
+        SELECT 'CUSTOMER'::VARCHAR AS result_type,
+               c.id,
+               c.name AS label,
+               c.phone AS subtitle,
+               c.id AS customer_id,
+               NULL::BIGINT AS vehicle_id
+        FROM customers c
+        WHERE c.active = TRUE
+          AND (
+              LOWER(c.name) LIKE '%' || LOWER(TRIM(p_query)) || '%'
+              OR c.phone LIKE '%' || regexp_replace(TRIM(p_query), '\D', '', 'g') || '%'
+              OR RIGHT(regexp_replace(c.phone, '\D', '', 'g'), 8)
+                 = RIGHT(regexp_replace(TRIM(p_query), '\D', '', 'g'), 8)
+          )
+        UNION ALL
+        SELECT 'VEHICLE'::VARCHAR,
+               v.id,
+               v.plate,
+               (v.brand || ' ' || v.model || ' — ' || c.name)::VARCHAR,
+               v.customer_id,
+               v.id
+        FROM vehicles v
+        INNER JOIN customers c ON c.id = v.customer_id
+        WHERE v.active = TRUE
+          AND (
+              UPPER(v.plate) LIKE '%' || UPPER(TRIM(p_query)) || '%'
+              OR LOWER(v.brand || ' ' || v.model) LIKE '%' || LOWER(TRIM(p_query)) || '%'
+          )
+    ) q
+    ORDER BY q.result_type, q.label
+    OFFSET v_page * v_size
+    LIMIT v_size;
+END;
 $$;

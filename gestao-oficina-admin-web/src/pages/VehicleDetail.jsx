@@ -7,6 +7,7 @@ import {
   formatDate,
   formatMoney,
 } from '../constants/labels';
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { workOrderTotal } from '../utils/workOrderUtils';
 import {
   Card,
@@ -16,11 +17,12 @@ import {
   SelectInput,
   TextInput,
 } from '../components/ui/PageElements';
+import { Pagination } from '../components/ui/Pagination';
 import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { showSuccess } from '../services/apiClient';
-import { fetchAllPages } from '../services/pageUtils';
+import { emptyPageResult, fetchAllPages } from '../services/pageUtils';
 import { fetchCustomer, fetchCustomers } from '../services/customerService';
 import {
   fetchVehicle,
@@ -38,7 +40,8 @@ export default function VehicleDetail() {
   const [vehicle, setVehicle] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [customers, setCustomers] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [ordersPage, setOrdersPage] = useState(() => emptyPageResult());
+  const [historyPage, setHistoryPage] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const editing = searchParams.get('edit') === '1' && canEdit;
@@ -57,9 +60,8 @@ export default function VehicleDetail() {
     (async () => {
       setLoading(true);
       try {
-        const [vehicleData, history, customerList] = await Promise.all([
+        const [vehicleData, customerList] = await Promise.all([
           fetchVehicle(session.token, id),
-          fetchVehicleHistory(session.token, id),
           fetchAllPages((page, pageSize) => fetchCustomers(session.token, { page, pageSize })),
         ]);
         if (cancelled) return;
@@ -71,7 +73,6 @@ export default function VehicleDetail() {
         setVehicle(vehicleData);
         setCustomer(customerData);
         setCustomers(customerList);
-        setOrders(history);
         setCustomerId(String(vehicleData.customerId || ''));
         setPlate(vehicleData.plate || '');
         setBrand(vehicleData.brand || '');
@@ -88,6 +89,30 @@ export default function VehicleDetail() {
       cancelled = true;
     };
   }, [session?.token, id]);
+
+  useEffect(() => {
+    if (!session?.token || !id) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const page = await fetchVehicleHistory(session.token, id, {
+          page: historyPage,
+          pageSize: DEFAULT_PAGE_SIZE,
+        });
+        if (!cancelled) {
+          setOrdersPage(page);
+          if (page.page !== historyPage) setHistoryPage(page.page);
+        }
+      } catch {
+        if (!cancelled) setOrdersPage(emptyPageResult());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id, historyPage]);
 
   if (loading) {
     return (
@@ -266,7 +291,9 @@ export default function VehicleDetail() {
               </div>
               <div>
                 <dt className="text-ink-400">Atendimentos</dt>
-                <dd className="font-display text-2xl font-bold text-ink-900">{orders.length}</dd>
+                <dd className="font-display text-2xl font-bold text-ink-900">
+                  {ordersPage.total}
+                </dd>
               </div>
             </dl>
           )}
@@ -277,45 +304,54 @@ export default function VehicleDetail() {
             <h2 className="font-display text-lg font-bold text-ink-900">Histórico de atendimentos</h2>
             <p className="text-sm text-ink-500">Todas as OS desta placa.</p>
           </div>
-          {orders.length === 0 ? (
+          {ordersPage.items.length === 0 ? (
             <EmptyState title="Sem histórico" description="Ainda não há OS para este veículo." />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>OS</th>
-                    <th>Data</th>
-                    <th>Status</th>
-                    <th>Pagamento</th>
-                    <th className="text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((wo) => (
-                    <tr
-                      key={wo.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/work-orders/${wo.id}`)}
-                    >
-                      <td>
-                        <span className="font-display font-bold text-signal">{wo.number}</span>
-                        <p className="line-clamp-1 text-xs text-ink-400">{wo.description}</p>
-                      </td>
-                      <td>{formatDate(wo.createdAt)}</td>
-                      <td>
-                        <StatusBadge
-                          label={WorkOrderStatusLabel[wo.status]}
-                          tone={WorkOrderStatusTone[wo.status]}
-                        />
-                      </td>
-                      <td>{PaymentStatusLabel[wo.paymentStatus]}</td>
-                      <td className="text-right font-bold">{formatMoney(workOrderTotal(wo))}</td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>OS</th>
+                      <th>Data</th>
+                      <th>Status</th>
+                      <th>Pagamento</th>
+                      <th className="text-right">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {ordersPage.items.map((wo) => (
+                      <tr
+                        key={wo.id}
+                        className="cursor-pointer"
+                        onClick={() => navigate(`/work-orders/${wo.id}`)}
+                      >
+                        <td>
+                          <span className="font-display font-bold text-signal">{wo.number}</span>
+                          <p className="line-clamp-1 text-xs text-ink-400">{wo.description}</p>
+                        </td>
+                        <td>{formatDate(wo.createdAt)}</td>
+                        <td>
+                          <StatusBadge
+                            label={WorkOrderStatusLabel[wo.status]}
+                            tone={WorkOrderStatusTone[wo.status]}
+                          />
+                        </td>
+                        <td>{PaymentStatusLabel[wo.paymentStatus]}</td>
+                        <td className="text-right font-bold">{formatMoney(workOrderTotal(wo))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                page={ordersPage.page}
+                pageMaxNumber={ordersPage.pageMaxNumber}
+                totalNumber={ordersPage.total}
+                pageSize={ordersPage.pageSize}
+                onPageChange={setHistoryPage}
+              />
+            </>
           )}
         </Card>
       </div>

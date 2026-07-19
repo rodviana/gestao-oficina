@@ -12,13 +12,17 @@ public interface VehicleRepository {
 
     Optional<VehicleDTO> findByPlate(String plate);
 
-    List<VehicleDTO> findByCustomer(Long customerId);
+    long countByCustomer(Long customerId);
+
+    List<VehicleDTO> findByCustomer(Long customerId, int page, int pageSize);
 
     long countSearch(String search);
 
     List<VehicleDTO> search(String search, int page, int pageSize);
 
-    List<WorkOrderSummaryDTO> findWorkOrderHistory(Long vehicleId);
+    long countWorkOrderHistory(Long vehicleId);
+
+    List<WorkOrderSummaryDTO> findWorkOrderHistory(Long vehicleId, int page, int pageSize);
 
     Long insert(Long customerId, String plate, String brand, String model, Integer year);
 

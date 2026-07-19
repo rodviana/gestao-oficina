@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ItemType, ItemTypeLabel, formatMoney } from '../../../constants/labels';
 import { Card, EmptyState, FieldLabel, SelectInput, TextInput } from '../../../components/ui/PageElements';
+import { Pagination } from '../../../components/ui/Pagination';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 
 export default function WorkOrderItemsSection({
   order,
@@ -10,6 +12,8 @@ export default function WorkOrderItemsSection({
   itemForm,
 }) {
   const { itemTab, setItemTab, form, catalog, updateField, submit, removeItem } = itemForm;
+  const items = order.items || [];
+  const paged = useClientPagination(items, { resetKey: `${order.id}-${items.length}` });
 
   return (
     <Card>
@@ -27,7 +31,7 @@ export default function WorkOrderItemsSection({
         )}
       </div>
 
-      {order.items.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState title="Nenhum item" description="Lance serviços ou peças nesta OS." />
       ) : (
         <div className="mb-6 overflow-x-auto">
@@ -43,7 +47,7 @@ export default function WorkOrderItemsSection({
               </tr>
             </thead>
             <tbody>
-              {order.items.map((item) => (
+              {paged.items.map((item) => (
                 <tr key={item.id}>
                   <td>
                     <span
@@ -77,6 +81,13 @@ export default function WorkOrderItemsSection({
               ))}
             </tbody>
           </table>
+          <Pagination
+            page={paged.page}
+            pageMaxNumber={paged.pageMaxNumber}
+            totalNumber={paged.total}
+            pageSize={paged.pageSize}
+            onPageChange={paged.setPage}
+          />
         </div>
       )}
 

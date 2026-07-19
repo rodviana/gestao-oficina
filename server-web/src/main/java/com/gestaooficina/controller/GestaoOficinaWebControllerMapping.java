@@ -17,6 +17,7 @@ public final class GestaoOficinaWebControllerMapping {
     public static final String WEB_ME_PATH = API_VERSION_V1 + "/web/me";
     public static final String ME_ORDERS = "/orders";
     public static final String ME_VEHICLES = "/vehicles";
+    public static final String ME_SUMMARY = "/summary";
     public static final String ME_ORDER_BY_ID = "/orders/{id}";
 
     /** Public tracking — GET /api/v1/web/tracking */

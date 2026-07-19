@@ -3,12 +3,14 @@ package com.gestaooficina.service;
 import com.gestaooficina.exception.GestaoOficinaGenericException;
 import com.gestaooficina.model.dto.CreatePartCatalogRequest;
 import com.gestaooficina.model.dto.CreateServiceCatalogRequest;
+import com.gestaooficina.model.dto.PageResultDTO;
 import com.gestaooficina.model.dto.PartCatalogDTO;
 import com.gestaooficina.model.dto.ServiceCatalogDTO;
 import com.gestaooficina.model.dto.UpdatePartCatalogRequest;
 import com.gestaooficina.model.dto.UpdateServiceCatalogRequest;
 import com.gestaooficina.repository.PartCatalogRepository;
 import com.gestaooficina.repository.ServiceCatalogRepository;
+import com.gestaooficina.utils.JdbcMappingUtils;
 import com.gestaooficina.utils.UserValidationUtils;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +28,19 @@ public class CatalogService {
         this.partCatalogRepository = partCatalogRepository;
     }
 
-    public List<ServiceCatalogDTO> listServices(Boolean onlyActive) {
-        return serviceCatalogRepository.list(onlyActive);
+    public PageResultDTO<ServiceCatalogDTO> listServices(
+            Boolean onlyActive, String search, Integer page, Integer pageSize) {
+        int safePageSize = JdbcMappingUtils.clampPageSize(pageSize);
+        int safePage = JdbcMappingUtils.safePage(page);
+        UserValidationUtils.validatePagination(safePage, safePageSize);
+
+        String searchText = search != null && !search.isBlank() ? search.trim() : null;
+        long total = serviceCatalogRepository.count(onlyActive, searchText);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
+        List<ServiceCatalogDTO> items =
+                serviceCatalogRepository.list(onlyActive, searchText, resolvedPage, safePageSize);
+        return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
     }
 
     public ServiceCatalogDTO findServiceById(Long id) {
@@ -56,8 +69,19 @@ public class CatalogService {
         return findServiceById(id);
     }
 
-    public List<PartCatalogDTO> listParts(Boolean onlyActive) {
-        return partCatalogRepository.list(onlyActive);
+    public PageResultDTO<PartCatalogDTO> listParts(
+            Boolean onlyActive, String search, Integer page, Integer pageSize) {
+        int safePageSize = JdbcMappingUtils.clampPageSize(pageSize);
+        int safePage = JdbcMappingUtils.safePage(page);
+        UserValidationUtils.validatePagination(safePage, safePageSize);
+
+        String searchText = search != null && !search.isBlank() ? search.trim() : null;
+        long total = partCatalogRepository.count(onlyActive, searchText);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
+        List<PartCatalogDTO> items =
+                partCatalogRepository.list(onlyActive, searchText, resolvedPage, safePageSize);
+        return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
     }
 
     public PartCatalogDTO findPartById(Long id) {

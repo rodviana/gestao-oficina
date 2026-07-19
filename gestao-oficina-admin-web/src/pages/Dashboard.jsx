@@ -7,7 +7,7 @@ import { UserRole } from '../constants/userRole';
 import { fetchAllPages } from '../services/pageUtils';
 import { fetchCustomers } from '../services/customerService';
 import { fetchVehicles } from '../services/vehicleService';
-import { fetchPartCatalog } from '../services/catalogService';
+import { fetchAllPartCatalog } from '../services/catalogService';
 import { fetchWorkOrdersForAnalytics } from '../services/workOrderService';
 import {
   EvolutionChart,
@@ -34,7 +34,7 @@ export default function Dashboard() {
           fetchWorkOrdersForAnalytics(token),
           fetchAllPages((page, pageSize) => fetchCustomers(token, { page, pageSize })),
           fetchAllPages((page, pageSize) => fetchVehicles(token, { page, pageSize })),
-          fetchPartCatalog(token),
+          fetchAllPartCatalog(token),
         ]);
         if (!cancelled) {
           setAnalyticsInput({ orders, customers, vehicles, partsCatalog });

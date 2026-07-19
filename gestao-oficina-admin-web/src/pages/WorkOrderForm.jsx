@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { showSuccess } from '../services/apiClient';
 import { fetchAllPages } from '../services/pageUtils';
 import { fetchCustomers } from '../services/customerService';
-import { fetchVehiclesByCustomer } from '../services/vehicleService';
+import { fetchAllVehiclesByCustomer } from '../services/vehicleService';
 import { fetchMechanics } from '../services/authService';
 import { createWorkOrder } from '../services/workOrderService';
 
@@ -62,7 +62,7 @@ export default function WorkOrderForm() {
 
     (async () => {
       try {
-        const list = await fetchVehiclesByCustomer(session.token, customerId);
+        const list = await fetchAllVehiclesByCustomer(session.token, customerId);
         if (cancelled) return;
         setVehicles(list);
         if (vehicleId && !list.some((v) => String(v.id) === String(vehicleId))) {

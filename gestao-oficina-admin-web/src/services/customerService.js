@@ -1,7 +1,11 @@
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { apiRequest } from './apiClient';
 import { buildQuery, normalizePageResult } from './pageUtils';
 
-export async function fetchCustomers(token, { search = '', page = 0, pageSize = 50 } = {}) {
+export async function fetchCustomers(
+  token,
+  { search = '', page = 0, pageSize = DEFAULT_PAGE_SIZE } = {},
+) {
   const data = await apiRequest(
     `/api/v1/customers${buildQuery({ search, page, pageSize })}`,
     { method: 'GET' },

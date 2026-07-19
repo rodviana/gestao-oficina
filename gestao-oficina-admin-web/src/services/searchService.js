@@ -1,5 +1,6 @@
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { apiRequest } from './apiClient';
-import { buildQuery } from './pageUtils';
+import { buildQuery, normalizePageResult } from './pageUtils';
 
 /**
  * Normaliza resultados da API para o formato usado na busca rápida da pista.
@@ -53,11 +54,19 @@ export function normalizeQuickSearchResults(results = []) {
   };
 }
 
-export async function quickSearch(token, query) {
+export async function quickSearch(
+  token,
+  query,
+  { page = 0, pageSize = DEFAULT_PAGE_SIZE } = {},
+) {
   const data = await apiRequest(
-    `/api/v1/search${buildQuery({ q: query })}`,
+    `/api/v1/search${buildQuery({ q: query, page, pageSize })}`,
     { method: 'GET' },
     { token },
   );
-  return normalizeQuickSearchResults(Array.isArray(data) ? data : []);
+  const pageResult = normalizePageResult(data);
+  return {
+    ...pageResult,
+    ...normalizeQuickSearchResults(pageResult.items),
+  };
 }

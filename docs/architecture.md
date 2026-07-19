@@ -188,6 +188,27 @@ Sem mocks: ambos os fronts consomem as APIs reais.
 
 ---
 
+## Paginação
+
+Contrato único `PageResultDTO` (campo `data` do envelope):
+
+| Campo | Significado |
+|-------|-------------|
+| `items` | Página atual |
+| `totalNumber` | Total de registros |
+| `pageNumber` | Página atual (**zero-based**) |
+| `pageSize` | Tamanho da página |
+| `pageMaxNumber` | Índice da última página (**zero-based**) |
+
+- Tamanho padrão: **20** (`DEFAULT_PAGE_SIZE`); máximo 100 no backend.
+- Listagens globais / pesquisáveis: paginação **server-side** (`count` + `list`/`search` com `OFFSET/LIMIT` nas `fn_*`).
+- Sublistas embutidas no detalhe (itens da OS, timeline): paginação **client-side** com `useClientPagination` + componente `Pagination`.
+- Filtros e buscas resetam para a página 0.
+- Front admin: `services/pageUtils.js`, `hooks/usePagedSearch.js`, `components/ui/Pagination.jsx`.
+- Front portal: `data/pageUtils.js`, `GET /api/v1/web/me/orders|vehicles|summary`.
+
+---
+
 ## Checklist — feature nova
 
 - [ ] Tabela/domínio com constraints nomeadas em `database/shared/`

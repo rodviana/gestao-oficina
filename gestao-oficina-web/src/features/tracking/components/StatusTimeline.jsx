@@ -5,6 +5,8 @@ import {
   STATUS_HINT,
   STATUS_LABEL,
 } from '../../../data/labels';
+import { Pagination } from '../../../components/ui/Pagination';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 
 export function resolveStepState(currentStatus, step, steps) {
   if (currentStatus === STATUS.CANCELLED) {
@@ -32,6 +34,9 @@ export function buildVisibleSteps(status, timeline = []) {
 
 export default function StatusTimeline({ status, paymentStatus, timeline = [] }) {
   const steps = buildVisibleSteps(status, timeline);
+  const paged = useClientPagination(steps, {
+    resetKey: `${status}-${timeline.length}-${steps.join(',')}`,
+  });
 
   return (
     <div className="space-y-6">
@@ -51,12 +56,13 @@ export default function StatusTimeline({ status, paymentStatus, timeline = [] })
       </div>
 
       <ol>
-        {steps.map((step, index) => {
+        {paged.items.map((step, index) => {
+          const absoluteIndex = paged.page * paged.pageSize + index;
           const state = resolveStepState(status, step, steps);
           const event = [...timeline].reverse().find((t) => t.status === step);
           return (
             <li key={step} className="relative flex gap-4 pb-6 last:pb-0">
-              {index < steps.length - 1 && (
+              {absoluteIndex < steps.length - 1 && (
                 <span
                   className={`absolute left-[15px] top-8 h-[calc(100%-1.5rem)] w-0.5 ${
                     state === 'done' || state === 'current' ? 'bg-shop-500' : 'bg-sand-200'
@@ -72,7 +78,7 @@ export default function StatusTimeline({ status, paymentStatus, timeline = [] })
                       : 'bg-sand-200 text-shop-500'
                 }`}
               >
-                {state === 'done' ? '✓' : index + 1}
+                {state === 'done' ? '✓' : absoluteIndex + 1}
               </span>
               <div className="min-w-0 flex-1 pt-0.5">
                 <p
@@ -89,6 +95,13 @@ export default function StatusTimeline({ status, paymentStatus, timeline = [] })
           );
         })}
       </ol>
+      <Pagination
+        page={paged.page}
+        pageMaxNumber={paged.pageMaxNumber}
+        totalNumber={paged.total}
+        pageSize={paged.pageSize}
+        onPageChange={paged.setPage}
+      />
     </div>
   );
 }

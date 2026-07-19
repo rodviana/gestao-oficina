@@ -2,9 +2,12 @@ import { Link } from 'react-router-dom';
 import WorkOrderCard from '../../tracking/components/WorkOrderCard';
 import { useCustomerPortfolio } from '../hooks/useCustomerPortfolio';
 import AccountStats from '../components/AccountStats';
+import { Pagination } from '../../../components/ui/Pagination';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 
 export default function AccountHomePage() {
-  const { active, history, vehicles, loading, error } = useCustomerPortfolio();
+  const { summary, active, recentHistory, loading, error } = useCustomerPortfolio();
+  const activePage = useClientPagination(active, { resetKey: active.length });
 
   if (loading) {
     return <p className="text-center text-sm text-shop-500">Carregando sua conta…</p>;
@@ -17,9 +20,9 @@ export default function AccountHomePage() {
   return (
     <div className="space-y-8">
       <AccountStats
-        activeCount={active.length}
-        historyCount={history.length}
-        vehicleCount={vehicles.length}
+        activeCount={summary.activeOrderCount}
+        historyCount={summary.historyOrderCount}
+        vehicleCount={summary.vehicleCount}
       />
 
       <section>
@@ -31,13 +34,22 @@ export default function AccountHomePage() {
             Nenhuma OS em andamento no momento.
           </p>
         ) : (
-          <ul className="space-y-3">
-            {active.map((wo) => (
-              <li key={wo.id}>
-                <WorkOrderCard order={wo} emphasize />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-3">
+              {activePage.items.map((wo) => (
+                <li key={wo.id}>
+                  <WorkOrderCard order={wo} emphasize />
+                </li>
+              ))}
+            </ul>
+            <Pagination
+              page={activePage.page}
+              pageMaxNumber={activePage.pageMaxNumber}
+              totalNumber={activePage.total}
+              pageSize={activePage.pageSize}
+              onPageChange={activePage.setPage}
+            />
+          </>
         )}
       </section>
 
@@ -51,11 +63,11 @@ export default function AccountHomePage() {
             Ver tudo
           </Link>
         </div>
-        {history.length === 0 ? (
+        {recentHistory.length === 0 ? (
           <p className="text-sm text-shop-500">Ainda sem histórico entregue.</p>
         ) : (
           <ul className="space-y-3">
-            {history.slice(0, 3).map((wo) => (
+            {recentHistory.map((wo) => (
               <li key={wo.id}>
                 <WorkOrderCard order={wo} />
               </li>

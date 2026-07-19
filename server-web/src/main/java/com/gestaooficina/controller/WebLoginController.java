@@ -1,6 +1,5 @@
 package com.gestaooficina.controller;
 
-import com.gestaooficina.exception.GestaoOficinaForbiddenException;
 import com.gestaooficina.exception.GestaoOficinaGenericException;
 import com.gestaooficina.model.dto.HttpResponseEntityDTO;
 import com.gestaooficina.model.dto.WebLoginRequest;

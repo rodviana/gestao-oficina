@@ -16,7 +16,8 @@ import java.util.Optional;
 @Repository
 public class PartCatalogJdbcRepository implements PartCatalogRepository {
 
-    private static final String SQL_LIST = "SELECT * FROM fn_part_catalog_list(?)";
+    private static final String SQL_COUNT = "SELECT fn_part_catalog_count(?, ?)";
+    private static final String SQL_LIST = "SELECT * FROM fn_part_catalog_list(?, ?, ?, ?)";
     private static final String SQL_FIND = "SELECT * FROM fn_part_catalog_find_by_id(?)";
     private static final String SQL_INSERT = "SELECT fn_part_catalog_insert(?, ?)";
     private static final String SQL_UPDATE = "SELECT fn_part_catalog_update(?, ?, ?)";
@@ -28,9 +29,21 @@ public class PartCatalogJdbcRepository implements PartCatalogRepository {
     }
 
     @Override
-    public List<PartCatalogDTO> list(Boolean onlyActive) {
+    public long count(Boolean onlyActive, String search) {
         try {
-            return executor.query(SQL_LIST, rowMapper(), onlyActive != null && onlyActive);
+            Long total = executor.queryScalar(
+                    SQL_COUNT, Long.class, onlyActive != null && onlyActive, search);
+            return total != null ? total : 0L;
+        } catch (DataAccessException e) {
+            throw jdbcError(e, "Falha ao contar peças.");
+        }
+    }
+
+    @Override
+    public List<PartCatalogDTO> list(Boolean onlyActive, String search, int page, int pageSize) {
+        try {
+            return executor.query(
+                    SQL_LIST, rowMapper(), onlyActive != null && onlyActive, search, page, pageSize);
         } catch (DataAccessException e) {
             throw jdbcError(e, "Falha ao listar peças.");
         }

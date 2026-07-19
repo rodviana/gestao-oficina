@@ -1,3 +1,4 @@
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { apiRequest } from './apiClient';
 import { buildQuery, fetchAllPages, normalizePageResult } from './pageUtils';
 
@@ -27,9 +28,26 @@ export async function fetchWorkOrderPanorama(token) {
   return Array.isArray(data) ? data : [];
 }
 
-export async function fetchWorkOrders(token, { status = '', page = 0, pageSize = 50 } = {}) {
+export async function fetchWorkOrders(
+  token,
+  {
+    status = '',
+    paymentStatus = '',
+    search = '',
+    customerId,
+    page = 0,
+    pageSize = DEFAULT_PAGE_SIZE,
+  } = {},
+) {
   const data = await apiRequest(
-    `/api/v1/work-orders${buildQuery({ status, page, pageSize })}`,
+    `/api/v1/work-orders${buildQuery({
+      status,
+      paymentStatus,
+      search,
+      customerId,
+      page,
+      pageSize,
+    })}`,
     { method: 'GET' },
     { token },
   );
@@ -40,12 +58,22 @@ export async function fetchWorkOrders(token, { status = '', page = 0, pageSize =
   };
 }
 
-export async function fetchAllWorkOrders(token, { status = '', pageSize = 100 } = {}) {
-  const items = await fetchAllPages(
-    (page, size) => fetchWorkOrders(token, { status, page, pageSize: size }).then((r) => r),
+export async function fetchAllWorkOrders(
+  token,
+  { status = '', paymentStatus = '', search = '', customerId, pageSize = DEFAULT_PAGE_SIZE } = {},
+) {
+  return fetchAllPages(
+    (page, size) =>
+      fetchWorkOrders(token, {
+        status,
+        paymentStatus,
+        search,
+        customerId,
+        page,
+        pageSize: size,
+      }),
     { pageSize },
   );
-  return items;
 }
 
 export async function fetchWorkOrder(token, id) {

@@ -10,7 +10,7 @@ spring:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:gestao-oficina-dev-secret-change-in-production-min-32-chars}
+    secret: ${JWT_SECRET:gestao-oficina-web-dev-secret-change-in-production-min-32-chars}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 logging:

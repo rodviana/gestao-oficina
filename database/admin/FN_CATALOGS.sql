@@ -2,7 +2,27 @@
 -- Funções de catálogos de serviços e peças (admin)
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION fn_service_catalog_list(p_only_active BOOLEAN)
+DROP FUNCTION IF EXISTS fn_service_catalog_list(BOOLEAN);
+DROP FUNCTION IF EXISTS fn_part_catalog_list(BOOLEAN);
+
+CREATE OR REPLACE FUNCTION fn_service_catalog_count(p_only_active BOOLEAN, p_search VARCHAR)
+RETURNS BIGINT
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT COUNT(*)
+    FROM service_catalog s
+    WHERE (COALESCE(p_only_active, FALSE) = FALSE OR s.active = TRUE)
+      AND (NULLIF(TRIM(p_search), '') IS NULL
+           OR LOWER(s.name) LIKE '%' || LOWER(TRIM(p_search)) || '%');
+$$;
+
+CREATE OR REPLACE FUNCTION fn_service_catalog_list(
+    p_only_active BOOLEAN,
+    p_search VARCHAR,
+    p_page INT,
+    p_page_size INT
+)
 RETURNS TABLE (
     id BIGINT,
     name VARCHAR,
@@ -10,13 +30,23 @@ RETURNS TABLE (
     active BOOLEAN,
     created_at TIMESTAMP
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
+DECLARE
+    v_page INT := GREATEST(COALESCE(p_page, 0), 0);
+    v_size INT := LEAST(GREATEST(COALESCE(p_page_size, 20), 1), 100);
+BEGIN
+    RETURN QUERY
     SELECT s.id, s.name, s.default_price, s.active, s.created_at
     FROM service_catalog s
-    WHERE COALESCE(p_only_active, FALSE) = FALSE OR s.active = TRUE
-    ORDER BY s.name;
+    WHERE (COALESCE(p_only_active, FALSE) = FALSE OR s.active = TRUE)
+      AND (NULLIF(TRIM(p_search), '') IS NULL
+           OR LOWER(s.name) LIKE '%' || LOWER(TRIM(p_search)) || '%')
+    ORDER BY s.name
+    OFFSET v_page * v_size
+    LIMIT v_size;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION fn_service_catalog_find_by_id(p_id BIGINT)
@@ -71,20 +101,47 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION fn_part_catalog_list(p_only_active BOOLEAN)
+CREATE OR REPLACE FUNCTION fn_part_catalog_count(p_only_active BOOLEAN, p_search VARCHAR)
+RETURNS BIGINT
+LANGUAGE sql
+STABLE
+AS $$
+    SELECT COUNT(*)
+    FROM part_catalog p
+    WHERE (COALESCE(p_only_active, FALSE) = FALSE OR p.active = TRUE)
+      AND (NULLIF(TRIM(p_search), '') IS NULL
+           OR LOWER(p.name) LIKE '%' || LOWER(TRIM(p_search)) || '%');
+$$;
+
+CREATE OR REPLACE FUNCTION fn_part_catalog_list(
+    p_only_active BOOLEAN,
+    p_search VARCHAR,
+    p_page INT,
+    p_page_size INT
+)
 RETURNS TABLE (
     id BIGINT,
     name VARCHAR,
     active BOOLEAN,
     created_at TIMESTAMP
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
+DECLARE
+    v_page INT := GREATEST(COALESCE(p_page, 0), 0);
+    v_size INT := LEAST(GREATEST(COALESCE(p_page_size, 20), 1), 100);
+BEGIN
+    RETURN QUERY
     SELECT p.id, p.name, p.active, p.created_at
     FROM part_catalog p
-    WHERE COALESCE(p_only_active, FALSE) = FALSE OR p.active = TRUE
-    ORDER BY p.name;
+    WHERE (COALESCE(p_only_active, FALSE) = FALSE OR p.active = TRUE)
+      AND (NULLIF(TRIM(p_search), '') IS NULL
+           OR LOWER(p.name) LIKE '%' || LOWER(TRIM(p_search)) || '%')
+    ORDER BY p.name
+    OFFSET v_page * v_size
+    LIMIT v_size;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION fn_part_catalog_find_by_id(p_id BIGINT)

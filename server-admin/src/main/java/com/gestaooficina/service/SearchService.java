@@ -1,8 +1,9 @@
 package com.gestaooficina.service;
 
-import com.gestaooficina.exception.GestaoOficinaGenericException;
+import com.gestaooficina.model.dto.PageResultDTO;
 import com.gestaooficina.model.dto.QuickSearchResultDTO;
 import com.gestaooficina.repository.QuickSearchRepository;
+import com.gestaooficina.utils.JdbcMappingUtils;
 import com.gestaooficina.utils.UserValidationUtils;
 import org.springframework.stereotype.Service;
 
@@ -17,8 +18,17 @@ public class SearchService {
         this.quickSearchRepository = quickSearchRepository;
     }
 
-    public List<QuickSearchResultDTO> quickSearch(String query) {
+    public PageResultDTO<QuickSearchResultDTO> quickSearch(String query, Integer page, Integer pageSize) {
         UserValidationUtils.requireNonBlank(query, "Termo de busca é obrigatório.");
-        return quickSearchRepository.search(query.trim());
+        int safePageSize = JdbcMappingUtils.clampPageSize(pageSize);
+        int safePage = JdbcMappingUtils.safePage(page);
+        UserValidationUtils.validatePagination(safePage, safePageSize);
+
+        String q = query.trim();
+        long total = quickSearchRepository.count(q);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
+        List<QuickSearchResultDTO> items = quickSearchRepository.search(q, resolvedPage, safePageSize);
+        return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
     }
 }

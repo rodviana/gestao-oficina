@@ -8,7 +8,9 @@ import java.util.Optional;
 
 public interface ServiceCatalogRepository {
 
-    List<ServiceCatalogDTO> list(Boolean onlyActive);
+    long count(Boolean onlyActive, String search);
+
+    List<ServiceCatalogDTO> list(Boolean onlyActive, String search, int page, int pageSize);
 
     Optional<ServiceCatalogDTO> findById(Long id);
 

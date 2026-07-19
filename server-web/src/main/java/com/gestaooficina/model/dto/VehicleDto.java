@@ -11,6 +11,9 @@ public class VehicleDto {
     private Integer year;
     private Boolean active;
     private LocalDateTime createdAt;
+    private Long orderCount;
+    private String lastOrderNumber;
+    private LocalDateTime lastOrderAt;
 
     public Long getId() {
         return id;
@@ -66,5 +69,29 @@ public class VehicleDto {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Long getOrderCount() {
+        return orderCount;
+    }
+
+    public void setOrderCount(Long orderCount) {
+        this.orderCount = orderCount;
+    }
+
+    public String getLastOrderNumber() {
+        return lastOrderNumber;
+    }
+
+    public void setLastOrderNumber(String lastOrderNumber) {
+        this.lastOrderNumber = lastOrderNumber;
+    }
+
+    public LocalDateTime getLastOrderAt() {
+        return lastOrderAt;
+    }
+
+    public void setLastOrderAt(LocalDateTime lastOrderAt) {
+        this.lastOrderAt = lastOrderAt;
     }
 }

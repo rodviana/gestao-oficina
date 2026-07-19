@@ -96,7 +96,8 @@ public class CustomerJdbcRepository implements CustomerRepository {
                 rs.getString("phone"),
                 rs.getBoolean("active"),
                 JdbcMappingUtils.toInstant(rs.getTimestamp("created_at")),
-                rs.getBoolean("has_account"));
+                rs.getBoolean("has_account"),
+                rs.getLong("vehicle_count"));
     }
 
     private GestaoOficinaGenericException jdbcError(DataAccessException e, String fallback) {

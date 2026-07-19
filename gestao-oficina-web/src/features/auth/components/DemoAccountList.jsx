@@ -1,13 +1,17 @@
 import { DEMO_ACCOUNTS } from '../../../data/demo';
+import { Pagination } from '../../../components/ui/Pagination';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 
 export default function DemoAccountList({ onSelect }) {
+  const paged = useClientPagination(DEMO_ACCOUNTS, { resetKey: DEMO_ACCOUNTS.length });
+
   return (
     <div>
       <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-shop-500">
         Contas de demonstração
       </p>
       <div className="flex flex-col gap-2">
-        {DEMO_ACCOUNTS.map((account) => (
+        {paged.items.map((account) => (
           <button
             key={account.email}
             type="button"
@@ -21,6 +25,13 @@ export default function DemoAccountList({ onSelect }) {
           </button>
         ))}
       </div>
+      <Pagination
+        page={paged.page}
+        pageMaxNumber={paged.pageMaxNumber}
+        totalNumber={paged.total}
+        pageSize={paged.pageSize}
+        onPageChange={paged.setPage}
+      />
     </div>
   );
 }

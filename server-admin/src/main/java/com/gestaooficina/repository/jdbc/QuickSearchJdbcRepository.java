@@ -14,7 +14,8 @@ import java.util.List;
 @Repository
 public class QuickSearchJdbcRepository implements QuickSearchRepository {
 
-    private static final String SQL_SEARCH = "SELECT * FROM fn_quick_search(?)";
+    private static final String SQL_COUNT = "SELECT fn_quick_search_count(?)";
+    private static final String SQL_SEARCH = "SELECT * FROM fn_quick_search(?, ?, ?)";
 
     private final JdbcProcedureExecutor executor;
 
@@ -23,9 +24,20 @@ public class QuickSearchJdbcRepository implements QuickSearchRepository {
     }
 
     @Override
-    public List<QuickSearchResultDTO> search(String query) {
+    public long count(String query) {
         try {
-            return executor.query(SQL_SEARCH, rowMapper(), query);
+            Long total = executor.queryScalar(SQL_COUNT, Long.class, query);
+            return total != null ? total : 0L;
+        } catch (DataAccessException e) {
+            throw new GestaoOficinaGenericException(
+                    UserValidationUtils.jdbcErrorMessage(e, "Falha na busca rápida."));
+        }
+    }
+
+    @Override
+    public List<QuickSearchResultDTO> search(String query, int page, int pageSize) {
+        try {
+            return executor.query(SQL_SEARCH, rowMapper(), query, page, pageSize);
         } catch (DataAccessException e) {
             throw new GestaoOficinaGenericException(
                     UserValidationUtils.jdbcErrorMessage(e, "Falha na busca rápida."));

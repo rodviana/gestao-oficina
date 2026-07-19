@@ -47,7 +47,6 @@ export function useTrackLookup() {
 
   function submitByPhone(event) {
     event.preventDefault();
-    setError('');
     setError('Para ver todas as suas OS, entre na sua conta. Ou use OS + placa na consulta rápida.');
   }
 

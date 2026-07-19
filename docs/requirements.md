@@ -37,6 +37,8 @@ Quando uma ideia estiver madura, vira um **RF-XX** com problema, o que o sistema
 
 **Dados reais:** schema compartilhado + APIs nos dois servers + fronts sem mock. Seed com ~480 OS em 24 meses.
 
+**Paginação:** listagens usam páginas numeradas de **20** itens. Listas globais/pesquisáveis são paginadas no servidor (`PageResultDTO`: `items`, `totalNumber`, `pageNumber`, `pageSize`, `pageMaxNumber` — página zero-based). Sublistas embutidas no detalhe (itens da OS, timeline) usam paginação no cliente. Ver [architecture.md](./architecture.md#paginação).
+
 **Fora do MVP:** controlar estoque, compras, emissão fiscal, agenda, comissões, app mobile, integrações externas (WhatsApp etc.), multilojas, indicadores avançados.
 
 ---

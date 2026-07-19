@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
-  PaymentStatusLabel,
   WorkOrderStatusLabel,
   WorkOrderStatusTone,
   formatDate,
   formatMoney,
 } from '../constants/labels';
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { workOrderTotal } from '../utils/workOrderUtils';
 import {
   Card,
@@ -15,13 +15,15 @@ import {
   PageHeader,
   TextInput,
 } from '../components/ui/PageElements';
+import { Pagination } from '../components/ui/Pagination';
 import { PrototypeBanner, StatusBadge } from '../components/PrototypeChrome';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../constants/userRole';
 import { showSuccess } from '../services/apiClient';
 import { fetchCustomer, updateCustomer } from '../services/customerService';
 import { fetchVehiclesByCustomer } from '../services/vehicleService';
-import { fetchAllWorkOrders } from '../services/workOrderService';
+import { fetchWorkOrders } from '../services/workOrderService';
+import { emptyPageResult } from '../services/pageUtils';
 
 export default function CustomerDetail() {
   const { id } = useParams();
@@ -31,8 +33,10 @@ export default function CustomerDetail() {
   const canEdit = session?.role === UserRole.ADMIN || session?.role === UserRole.ATTENDANT;
 
   const [customer, setCustomer] = useState(null);
-  const [vehicles, setVehicles] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [vehiclesPage, setVehiclesPage] = useState(() => emptyPageResult());
+  const [ordersPage, setOrdersPage] = useState(() => emptyPageResult());
+  const [vehiclePage, setVehiclePage] = useState(0);
+  const [orderPage, setOrderPage] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const editing = searchParams.get('edit') === '1' && canEdit;
@@ -49,15 +53,9 @@ export default function CustomerDetail() {
     (async () => {
       setLoading(true);
       try {
-        const [customerData, vehicleData, allOrders] = await Promise.all([
-          fetchCustomer(session.token, id),
-          fetchVehiclesByCustomer(session.token, id),
-          fetchAllWorkOrders(session.token, { pageSize: 100 }),
-        ]);
+        const customerData = await fetchCustomer(session.token, id);
         if (cancelled) return;
         setCustomer(customerData);
-        setVehicles(vehicleData);
-        setOrders(allOrders.filter((wo) => String(wo.customerId) === String(id)));
         setName(customerData.name || '');
         setPhone(customerData.phone || '');
         setDocument(customerData.document || '');
@@ -72,6 +70,55 @@ export default function CustomerDetail() {
       cancelled = true;
     };
   }, [session?.token, id]);
+
+  useEffect(() => {
+    if (!session?.token || !id) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const page = await fetchVehiclesByCustomer(session.token, id, {
+          page: vehiclePage,
+          pageSize: DEFAULT_PAGE_SIZE,
+        });
+        if (!cancelled) {
+          setVehiclesPage(page);
+          if (page.page !== vehiclePage) setVehiclePage(page.page);
+        }
+      } catch {
+        if (!cancelled) setVehiclesPage(emptyPageResult());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id, vehiclePage]);
+
+  useEffect(() => {
+    if (!session?.token || !id) return undefined;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const page = await fetchWorkOrders(session.token, {
+          customerId: id,
+          page: orderPage,
+          pageSize: DEFAULT_PAGE_SIZE,
+        });
+        if (!cancelled) {
+          setOrdersPage(page);
+          if (page.page !== orderPage) setOrderPage(page.page);
+        }
+      } catch {
+        if (!cancelled) setOrdersPage(emptyPageResult());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, id, orderPage]);
 
   if (loading) {
     return (
@@ -143,7 +190,11 @@ export default function CustomerDetail() {
         actions={
           canEdit ? (
             editing ? (
-              <button type="button" className="btn-secondary !border-white/20 !bg-white/10 !text-white" onClick={cancelEdit}>
+              <button
+                type="button"
+                className="btn-secondary !border-white/20 !bg-white/10 !text-white"
+                onClick={cancelEdit}
+              >
                 Cancelar edição
               </button>
             ) : (
@@ -203,19 +254,21 @@ export default function CustomerDetail() {
               </div>
               <div>
                 <dt className="text-ink-400">Veículos</dt>
-                <dd className="font-display text-2xl font-bold text-ink-900">{vehicles.length}</dd>
+                <dd className="font-display text-2xl font-bold text-ink-900">
+                  {customer.vehicleCount ?? vehiclesPage.total}
+                </dd>
               </div>
               <div>
                 <dt className="text-ink-400">Ordens de serviço</dt>
-                <dd className="font-display text-2xl font-bold text-ink-900">{orders.length}</dd>
+                <dd className="font-display text-2xl font-bold text-ink-900">{ordersPage.total}</dd>
               </div>
             </dl>
           )}
         </Card>
 
         <div className="space-y-4 lg:col-span-2">
-          <Card>
-            <div className="mb-4 flex items-center justify-between gap-2">
+          <Card padding={false}>
+            <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-6 py-4">
               <h2 className="font-display text-lg font-bold text-ink-900">Veículos</h2>
               {canEdit && (
                 <Link
@@ -226,28 +279,37 @@ export default function CustomerDetail() {
                 </Link>
               )}
             </div>
-            {vehicles.length === 0 ? (
+            {vehiclesPage.items.length === 0 ? (
               <EmptyState title="Nenhum veículo" description="Vincule um carro a este cliente." />
             ) : (
-              <ul className="divide-y divide-ink-100">
-                {vehicles.map((v) => (
-                  <li key={v.id}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-ink-50/80"
-                      onClick={() => navigate(`/vehicles/${v.id}`)}
-                    >
-                      <div>
-                        <p className="font-display font-bold text-ink-900">{v.plate}</p>
-                        <p className="text-sm text-ink-500">
-                          {v.brand} {v.model} {v.year ? `(${v.year})` : ''}
-                        </p>
-                      </div>
-                      <span className="text-xs font-semibold text-signal">Ver detalhe →</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="divide-y divide-ink-100 px-6">
+                  {vehiclesPage.items.map((v) => (
+                    <li key={v.id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-3 py-3 text-left transition hover:bg-ink-50/80"
+                        onClick={() => navigate(`/vehicles/${v.id}`)}
+                      >
+                        <div>
+                          <p className="font-display font-bold text-ink-900">{v.plate}</p>
+                          <p className="text-sm text-ink-500">
+                            {v.brand} {v.model} {v.year ? `(${v.year})` : ''}
+                          </p>
+                        </div>
+                        <span className="text-xs font-semibold text-signal">Ver detalhe →</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <Pagination
+                  page={vehiclesPage.page}
+                  pageMaxNumber={vehiclesPage.pageMaxNumber}
+                  totalNumber={vehiclesPage.total}
+                  pageSize={vehiclesPage.pageSize}
+                  onPageChange={setVehiclePage}
+                />
+              </>
             )}
           </Card>
 
@@ -255,44 +317,53 @@ export default function CustomerDetail() {
             <div className="border-b border-ink-100 px-6 py-4">
               <h2 className="font-display text-lg font-bold text-ink-900">Histórico de OS</h2>
             </div>
-            {orders.length === 0 ? (
+            {ordersPage.items.length === 0 ? (
               <EmptyState title="Sem ordens" description="Ainda não há OS para este cliente." />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>OS</th>
-                      <th>Placa</th>
-                      <th>Data</th>
-                      <th>Status</th>
-                      <th className="text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map((wo) => (
-                      <tr
-                        key={wo.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/work-orders/${wo.id}`)}
-                      >
-                        <td className="font-display font-bold text-signal">{wo.number}</td>
-                        <td>{wo.vehiclePlate || '—'}</td>
-                        <td>{formatDate(wo.createdAt)}</td>
-                        <td>
-                          <StatusBadge
-                            label={WorkOrderStatusLabel[wo.status]}
-                            tone={WorkOrderStatusTone[wo.status]}
-                          />
-                        </td>
-                        <td className="text-right font-bold">
-                          {formatMoney(workOrderTotal(wo))}
-                        </td>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>OS</th>
+                        <th>Placa</th>
+                        <th>Data</th>
+                        <th>Status</th>
+                        <th className="text-right">Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {ordersPage.items.map((wo) => (
+                        <tr
+                          key={wo.id}
+                          className="cursor-pointer"
+                          onClick={() => navigate(`/work-orders/${wo.id}`)}
+                        >
+                          <td className="font-display font-bold text-signal">{wo.number}</td>
+                          <td>{wo.vehiclePlate || '—'}</td>
+                          <td>{formatDate(wo.createdAt)}</td>
+                          <td>
+                            <StatusBadge
+                              label={WorkOrderStatusLabel[wo.status]}
+                              tone={WorkOrderStatusTone[wo.status]}
+                            />
+                          </td>
+                          <td className="text-right font-bold">
+                            {formatMoney(workOrderTotal(wo))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={ordersPage.page}
+                  pageMaxNumber={ordersPage.pageMaxNumber}
+                  totalNumber={ordersPage.total}
+                  pageSize={ordersPage.pageSize}
+                  onPageChange={setOrderPage}
+                />
+              </>
             )}
           </Card>
         </div>

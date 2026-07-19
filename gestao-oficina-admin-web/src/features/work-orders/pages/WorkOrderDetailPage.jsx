@@ -8,7 +8,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { UserRole } from '../../../constants/userRole';
 import { showSuccess } from '../../../services/apiClient';
 import { fetchMechanics } from '../../../services/authService';
-import { fetchServiceCatalog, fetchPartCatalog } from '../../../services/catalogService';
+import { fetchAllServiceCatalog, fetchAllPartCatalog } from '../../../services/catalogService';
 import {
   assignWorkOrderMechanic,
   fetchWorkOrder,
@@ -53,8 +53,8 @@ export default function WorkOrderDetailPage() {
         const [detail, mechanicList, serviceList, partList] = await Promise.all([
           fetchWorkOrder(session.token, id),
           fetchMechanics(session.token),
-          fetchServiceCatalog(session.token, { onlyActive: true }),
-          fetchPartCatalog(session.token, { onlyActive: true }),
+          fetchAllServiceCatalog(session.token, { onlyActive: true }),
+          fetchAllPartCatalog(session.token, { onlyActive: true }),
         ]);
         if (!cancelled) {
           setOrder(detail);

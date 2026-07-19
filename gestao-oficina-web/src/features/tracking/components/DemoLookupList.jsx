@@ -1,13 +1,17 @@
 import { DEMO_LOOKUPS } from '../../../data/demo';
+import { Pagination } from '../../../components/ui/Pagination';
+import { useClientPagination } from '../../../hooks/useClientPagination';
 
 export default function DemoLookupList({ onSelect }) {
+  const paged = useClientPagination(DEMO_LOOKUPS, { resetKey: DEMO_LOOKUPS.length });
+
   return (
     <div>
       <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-shop-500">
         Exemplos para testar
       </p>
       <div className="flex flex-col gap-2">
-        {DEMO_LOOKUPS.map((demo) => (
+        {paged.items.map((demo) => (
           <button
             key={demo.number + demo.plate + demo.label}
             type="button"
@@ -22,6 +26,13 @@ export default function DemoLookupList({ onSelect }) {
           </button>
         ))}
       </div>
+      <Pagination
+        page={paged.page}
+        pageMaxNumber={paged.pageMaxNumber}
+        totalNumber={paged.total}
+        pageSize={paged.pageSize}
+        onPageChange={paged.setPage}
+      />
     </div>
   );
 }

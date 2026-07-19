@@ -56,10 +56,15 @@ public class WorkOrderController extends BaseController {
     @Operation(summary = "List work orders")
     public ResponseEntity<HttpResponseEntityDTO<?>> list(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String paymentStatus,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long customerId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageSize) {
         try {
-            return ok(workOrderService.list(status, page, pageSize), "Work orders loaded.");
+            return ok(
+                    workOrderService.list(status, paymentStatus, search, customerId, page, pageSize),
+                    "Work orders loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {

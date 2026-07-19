@@ -30,18 +30,32 @@ public class WorkOrderService {
         this.authSupport = authSupport;
     }
 
-    public PageResultDTO<WorkOrderSummaryDTO> list(String status, Integer page, Integer pageSize) {
+    public PageResultDTO<WorkOrderSummaryDTO> list(
+            String status,
+            String paymentStatus,
+            String search,
+            Long customerId,
+            Integer page,
+            Integer pageSize) {
         int safePageSize = JdbcMappingUtils.clampPageSize(pageSize);
         int safePage = JdbcMappingUtils.safePage(page);
         UserValidationUtils.validatePagination(safePage, safePageSize);
 
-        String statusCode = status != null && !status.isBlank() ? status.trim() : null;
-        long total = workOrderRepository.count(statusCode);
-        int pageMax = total <= 0 ? 0 : (int) ((total - 1) / safePageSize);
-        int resolvedPage = Math.min(safePage, pageMax);
+        String statusCode = blankToNull(status);
+        String paymentCode = blankToNull(paymentStatus);
+        String searchText = blankToNull(search);
 
-        List<WorkOrderSummaryDTO> items = workOrderRepository.list(statusCode, resolvedPage, safePageSize);
+        long total = workOrderRepository.count(statusCode, paymentCode, searchText, customerId);
+        int pageMax = JdbcMappingUtils.pageMaxNumber(total, safePageSize);
+        int resolvedPage = JdbcMappingUtils.resolvePage(safePage, pageMax);
+
+        List<WorkOrderSummaryDTO> items = workOrderRepository.list(
+                statusCode, paymentCode, searchText, customerId, resolvedPage, safePageSize);
         return new PageResultDTO<>(items, total, resolvedPage, safePageSize, pageMax);
+    }
+
+    private static String blankToNull(String value) {
+        return value != null && !value.isBlank() ? value.trim() : null;
     }
 
     public WorkOrderDTO findById(Long id) {

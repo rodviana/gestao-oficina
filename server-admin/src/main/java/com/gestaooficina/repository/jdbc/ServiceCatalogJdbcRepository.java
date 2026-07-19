@@ -17,7 +17,8 @@ import java.util.Optional;
 @Repository
 public class ServiceCatalogJdbcRepository implements ServiceCatalogRepository {
 
-    private static final String SQL_LIST = "SELECT * FROM fn_service_catalog_list(?)";
+    private static final String SQL_COUNT = "SELECT fn_service_catalog_count(?, ?)";
+    private static final String SQL_LIST = "SELECT * FROM fn_service_catalog_list(?, ?, ?, ?)";
     private static final String SQL_FIND = "SELECT * FROM fn_service_catalog_find_by_id(?)";
     private static final String SQL_INSERT = "SELECT fn_service_catalog_insert(?, ?, ?)";
     private static final String SQL_UPDATE = "SELECT fn_service_catalog_update(?, ?, ?, ?)";
@@ -29,9 +30,21 @@ public class ServiceCatalogJdbcRepository implements ServiceCatalogRepository {
     }
 
     @Override
-    public List<ServiceCatalogDTO> list(Boolean onlyActive) {
+    public long count(Boolean onlyActive, String search) {
         try {
-            return executor.query(SQL_LIST, rowMapper(), onlyActive != null && onlyActive);
+            Long total = executor.queryScalar(
+                    SQL_COUNT, Long.class, onlyActive != null && onlyActive, search);
+            return total != null ? total : 0L;
+        } catch (DataAccessException e) {
+            throw jdbcError(e, "Falha ao contar serviços.");
+        }
+    }
+
+    @Override
+    public List<ServiceCatalogDTO> list(Boolean onlyActive, String search, int page, int pageSize) {
+        try {
+            return executor.query(
+                    SQL_LIST, rowMapper(), onlyActive != null && onlyActive, search, page, pageSize);
         } catch (DataAccessException e) {
             throw jdbcError(e, "Falha ao listar serviços.");
         }

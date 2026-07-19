@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,11 +26,18 @@ public class WebMeController extends BaseController {
     }
 
     @GetMapping(GestaoOficinaWebControllerMapping.ME_ORDERS)
-    @Operation(summary = "List customer work orders")
-    public ResponseEntity<HttpResponseEntityDTO<?>> listOrders(Authentication authentication) {
+    @Operation(summary = "List customer work orders (paginated)")
+    public ResponseEntity<HttpResponseEntityDTO<?>> listOrders(
+            Authentication authentication,
+            @RequestParam(required = false) String statusGroup,
+            @RequestParam(required = false) Long vehicleId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
             Long customerId = requireCustomerId(authentication);
-            return okList(webMeService.getOrders(customerId), "Orders loaded.");
+            return ok(
+                    webMeService.getOrders(customerId, statusGroup, vehicleId, page, pageSize),
+                    "Orders loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {
@@ -40,17 +48,35 @@ public class WebMeController extends BaseController {
     }
 
     @GetMapping(GestaoOficinaWebControllerMapping.ME_VEHICLES)
-    @Operation(summary = "List customer vehicles")
-    public ResponseEntity<HttpResponseEntityDTO<?>> listVehicles(Authentication authentication) {
+    @Operation(summary = "List customer vehicles (paginated)")
+    public ResponseEntity<HttpResponseEntityDTO<?>> listVehicles(
+            Authentication authentication,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
             Long customerId = requireCustomerId(authentication);
-            return okList(webMeService.getVehicles(customerId), "Vehicles loaded.");
+            return ok(webMeService.getVehicles(customerId, page, pageSize), "Vehicles loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {
             return genericError(e);
         } catch (Exception e) {
             return internalError(e, "Erro inesperado ao carregar veículos.");
+        }
+    }
+
+    @GetMapping(GestaoOficinaWebControllerMapping.ME_SUMMARY)
+    @Operation(summary = "Customer portfolio summary counters")
+    public ResponseEntity<HttpResponseEntityDTO<?>> summary(Authentication authentication) {
+        try {
+            Long customerId = requireCustomerId(authentication);
+            return ok(webMeService.getSummary(customerId), "Summary loaded.");
+        } catch (GestaoOficinaForbiddenException e) {
+            return forbidden(e);
+        } catch (GestaoOficinaGenericException e) {
+            return genericError(e);
+        } catch (Exception e) {
+            return internalError(e, "Erro inesperado ao carregar resumo.");
         }
     }
 

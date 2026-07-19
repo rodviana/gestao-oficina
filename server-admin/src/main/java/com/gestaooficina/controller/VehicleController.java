@@ -79,9 +79,12 @@ public class VehicleController extends BaseController {
 
     @GetMapping(GestaoOficinaControllerMapping.VEHICLES_BY_CUSTOMER + "/{customerId}")
     @Operation(summary = "List vehicles by customer")
-    public ResponseEntity<HttpResponseEntityDTO<?>> findByCustomer(@PathVariable Long customerId) {
+    public ResponseEntity<HttpResponseEntityDTO<?>> findByCustomer(
+            @PathVariable Long customerId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
-            return ok(vehicleService.findByCustomer(customerId), "Vehicles loaded.");
+            return ok(vehicleService.findByCustomer(customerId, page, pageSize), "Vehicles loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {
@@ -93,9 +96,12 @@ public class VehicleController extends BaseController {
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Work order history by vehicle")
-    public ResponseEntity<HttpResponseEntityDTO<?>> history(@PathVariable Long id) {
+    public ResponseEntity<HttpResponseEntityDTO<?>> history(
+            @PathVariable Long id,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
-            return ok(vehicleService.findHistory(id), "Vehicle history loaded.");
+            return ok(vehicleService.findHistory(id, page, pageSize), "Vehicle history loaded.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {

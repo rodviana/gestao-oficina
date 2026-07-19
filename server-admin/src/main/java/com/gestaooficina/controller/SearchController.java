@@ -28,9 +28,12 @@ public class SearchController extends BaseController {
 
     @GetMapping
     @Operation(summary = "Quick search customers and vehicles")
-    public ResponseEntity<HttpResponseEntityDTO<?>> quickSearch(@RequestParam("q") String query) {
+    public ResponseEntity<HttpResponseEntityDTO<?>> quickSearch(
+            @RequestParam("q") String query,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize) {
         try {
-            return ok(searchService.quickSearch(query), "Search completed.");
+            return ok(searchService.quickSearch(query, page, pageSize), "Search completed.");
         } catch (GestaoOficinaForbiddenException e) {
             return forbidden(e);
         } catch (GestaoOficinaGenericException e) {

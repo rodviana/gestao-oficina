@@ -11,12 +11,13 @@ public class CustomerDTO {
     private Boolean active;
     private Instant createdAt;
     private Boolean hasAccount;
+    private Long vehicleCount;
 
     public CustomerDTO() {
     }
 
     public CustomerDTO(Long id, String name, String document, String phone, Boolean active,
-                       Instant createdAt, Boolean hasAccount) {
+                       Instant createdAt, Boolean hasAccount, Long vehicleCount) {
         this.id = id;
         this.name = name;
         this.document = document;
@@ -24,6 +25,7 @@ public class CustomerDTO {
         this.active = active;
         this.createdAt = createdAt;
         this.hasAccount = hasAccount;
+        this.vehicleCount = vehicleCount;
     }
 
     public Long getId() {
@@ -80,5 +82,13 @@ public class CustomerDTO {
 
     public void setHasAccount(Boolean hasAccount) {
         this.hasAccount = hasAccount;
+    }
+
+    public Long getVehicleCount() {
+        return vehicleCount;
+    }
+
+    public void setVehicleCount(Long vehicleCount) {
+        this.vehicleCount = vehicleCount;
     }
 }

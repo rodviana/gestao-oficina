@@ -14,9 +14,10 @@ public interface WorkOrderRepository {
 
     Optional<WorkOrderDTO> findById(Long id);
 
-    long count(String statusCode);
+    long count(String statusCode, String paymentStatusCode, String search, Long customerId);
 
-    List<WorkOrderSummaryDTO> list(String statusCode, int page, int pageSize);
+    List<WorkOrderSummaryDTO> list(String statusCode, String paymentStatusCode, String search,
+                                   Long customerId, int page, int pageSize);
 
     Long insert(Long customerId, Long vehicleId, String description, Long createdById, Long mechanicId);
 

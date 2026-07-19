@@ -19,10 +19,12 @@ public class VehicleJdbcRepository implements VehicleRepository {
 
     private static final String SQL_FIND_BY_ID = "SELECT * FROM fn_vehicle_find_by_id(?)";
     private static final String SQL_FIND_BY_PLATE = "SELECT * FROM fn_vehicle_find_by_plate(?)";
-    private static final String SQL_FIND_BY_CUSTOMER = "SELECT * FROM fn_vehicle_find_by_customer(?)";
+    private static final String SQL_COUNT_BY_CUSTOMER = "SELECT fn_vehicle_count_by_customer(?)";
+    private static final String SQL_FIND_BY_CUSTOMER = "SELECT * FROM fn_vehicle_find_by_customer(?, ?, ?)";
     private static final String SQL_COUNT = "SELECT fn_vehicle_count_search(?)";
     private static final String SQL_SEARCH = "SELECT * FROM fn_vehicle_search(?, ?, ?)";
-    private static final String SQL_HISTORY = "SELECT * FROM fn_work_order_by_vehicle(?)";
+    private static final String SQL_HISTORY_COUNT = "SELECT fn_work_order_count_by_vehicle(?)";
+    private static final String SQL_HISTORY = "SELECT * FROM fn_work_order_by_vehicle(?, ?, ?)";
     private static final String SQL_INSERT = "SELECT fn_vehicle_insert(?, ?, ?, ?, ?)";
     private static final String SQL_UPDATE = "SELECT fn_vehicle_update(?, ?, ?, ?, ?, ?, ?)";
 
@@ -43,8 +45,18 @@ public class VehicleJdbcRepository implements VehicleRepository {
     }
 
     @Override
-    public List<VehicleDTO> findByCustomer(Long customerId) {
-        return queryList(SQL_FIND_BY_CUSTOMER, customerId);
+    public long countByCustomer(Long customerId) {
+        try {
+            Long total = executor.queryScalar(SQL_COUNT_BY_CUSTOMER, Long.class, customerId);
+            return total != null ? total : 0L;
+        } catch (DataAccessException e) {
+            throw jdbcError(e, "Falha ao contar veículos do cliente.");
+        }
+    }
+
+    @Override
+    public List<VehicleDTO> findByCustomer(Long customerId, int page, int pageSize) {
+        return queryList(SQL_FIND_BY_CUSTOMER, customerId, page, pageSize);
     }
 
     @Override
@@ -63,9 +75,19 @@ public class VehicleJdbcRepository implements VehicleRepository {
     }
 
     @Override
-    public List<WorkOrderSummaryDTO> findWorkOrderHistory(Long vehicleId) {
+    public long countWorkOrderHistory(Long vehicleId) {
         try {
-            return executor.query(SQL_HISTORY, workOrderSummaryRowMapper(), vehicleId);
+            Long total = executor.queryScalar(SQL_HISTORY_COUNT, Long.class, vehicleId);
+            return total != null ? total : 0L;
+        } catch (DataAccessException e) {
+            throw jdbcError(e, "Falha ao contar histórico do veículo.");
+        }
+    }
+
+    @Override
+    public List<WorkOrderSummaryDTO> findWorkOrderHistory(Long vehicleId, int page, int pageSize) {
+        try {
+            return executor.query(SQL_HISTORY, workOrderSummaryRowMapper(), vehicleId, page, pageSize);
         } catch (DataAccessException e) {
             throw jdbcError(e, "Falha ao buscar histórico do veículo.");
         }
@@ -132,6 +154,8 @@ public class VehicleJdbcRepository implements VehicleRepository {
             dto.setStatusLabel(rs.getString("status_label"));
             dto.setPaymentStatusCode(rs.getString("payment_status_code"));
             dto.setPaymentStatusLabel(rs.getString("payment_status_label"));
+            dto.setMechanicId((Long) rs.getObject("mechanic_id"));
+            dto.setMechanicName(rs.getString("mechanic_name"));
             dto.setTotal(rs.getBigDecimal("total"));
             dto.setCreatedAt(JdbcMappingUtils.toInstant(rs.getTimestamp("created_at")));
             dto.setUpdatedAt(JdbcMappingUtils.toInstant(rs.getTimestamp("updated_at")));

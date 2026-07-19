@@ -56,10 +56,12 @@ public abstract class BaseController {
     }
 
     protected ResponseEntity<HttpResponseEntityDTO<?>> internalError(Exception e) {
-        String msg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-        log.error("[gestao-oficina] 500 Internal Server Error: {} - {}", msg, e.getClass().getSimpleName(), e);
+        String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        log.error("[gestao-oficina] 500 Internal Server Error: {} - {}", detail, e.getClass().getSimpleName(), e);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(HttpResponseEntityDTO.error(msg, HttpStatus.INTERNAL_SERVER_ERROR.value()));
+                .body(HttpResponseEntityDTO.error(
+                        "Erro inesperado. Tente novamente em instantes.",
+                        HttpStatus.INTERNAL_SERVER_ERROR.value()));
     }
 }

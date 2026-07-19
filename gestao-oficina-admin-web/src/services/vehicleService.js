@@ -1,8 +1,12 @@
+import { DEFAULT_PAGE_SIZE } from '../constants/pagination';
 import { apiRequest } from './apiClient';
-import { buildQuery, normalizePageResult } from './pageUtils';
+import { buildQuery, fetchAllPages, normalizePageResult } from './pageUtils';
 import { normalizeWorkOrderSummary } from './workOrderService';
 
-export async function fetchVehicles(token, { search = '', page = 0, pageSize = 50 } = {}) {
+export async function fetchVehicles(
+  token,
+  { search = '', page = 0, pageSize = DEFAULT_PAGE_SIZE } = {},
+) {
   const data = await apiRequest(
     `/api/v1/vehicles${buildQuery({ search, page, pageSize })}`,
     { method: 'GET' },
@@ -23,22 +27,41 @@ export async function fetchVehicleByPlate(token, plate) {
   );
 }
 
-export async function fetchVehiclesByCustomer(token, customerId) {
+export async function fetchVehiclesByCustomer(
+  token,
+  customerId,
+  { page = 0, pageSize = DEFAULT_PAGE_SIZE } = {},
+) {
   const data = await apiRequest(
-    `/api/v1/vehicles/by-customer/${customerId}`,
+    `/api/v1/vehicles/by-customer/${customerId}${buildQuery({ page, pageSize })}`,
     { method: 'GET' },
     { token },
   );
-  return Array.isArray(data) ? data : [];
+  return normalizePageResult(data);
 }
 
-export async function fetchVehicleHistory(token, vehicleId) {
+export async function fetchAllVehiclesByCustomer(token, customerId) {
+  return fetchAllPages(
+    (page, size) => fetchVehiclesByCustomer(token, customerId, { page, pageSize: size }),
+    { pageSize: DEFAULT_PAGE_SIZE },
+  );
+}
+
+export async function fetchVehicleHistory(
+  token,
+  vehicleId,
+  { page = 0, pageSize = DEFAULT_PAGE_SIZE } = {},
+) {
   const data = await apiRequest(
-    `/api/v1/vehicles/${vehicleId}/history`,
+    `/api/v1/vehicles/${vehicleId}/history${buildQuery({ page, pageSize })}`,
     { method: 'GET' },
     { token },
   );
-  return (Array.isArray(data) ? data : []).map(normalizeWorkOrderSummary);
+  const pageResult = normalizePageResult(data);
+  return {
+    ...pageResult,
+    items: pageResult.items.map(normalizeWorkOrderSummary),
+  };
 }
 
 export async function createVehicle(token, payload) {

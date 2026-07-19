@@ -2,6 +2,10 @@
 -- Funções de clientes (admin)
 -- =============================================================================
 
+DROP FUNCTION IF EXISTS fn_customer_find_by_id(BIGINT);
+DROP FUNCTION IF EXISTS fn_customer_search(VARCHAR, INT, INT);
+DROP FUNCTION IF EXISTS fn_customer_find_by_phone(VARCHAR);
+
 CREATE OR REPLACE FUNCTION fn_customer_find_by_id(p_id BIGINT)
 RETURNS TABLE (
     id BIGINT,
@@ -10,13 +14,15 @@ RETURNS TABLE (
     phone VARCHAR,
     active BOOLEAN,
     created_at TIMESTAMP,
-    has_account BOOLEAN
+    has_account BOOLEAN,
+    vehicle_count BIGINT
 )
 LANGUAGE sql
 STABLE
 AS $$
     SELECT c.id, c.name, c.document, c.phone, c.active, c.created_at,
-           EXISTS (SELECT 1 FROM customer_account a WHERE a.customer_id = c.id) AS has_account
+           EXISTS (SELECT 1 FROM customer_account a WHERE a.customer_id = c.id) AS has_account,
+           (SELECT COUNT(*) FROM vehicles v WHERE v.customer_id = c.id) AS vehicle_count
     FROM customers c
     WHERE c.id = p_id;
 $$;
@@ -42,7 +48,8 @@ RETURNS TABLE (
     phone VARCHAR,
     active BOOLEAN,
     created_at TIMESTAMP,
-    has_account BOOLEAN
+    has_account BOOLEAN,
+    vehicle_count BIGINT
 )
 LANGUAGE plpgsql
 STABLE
@@ -53,7 +60,8 @@ DECLARE
 BEGIN
     RETURN QUERY
     SELECT c.id, c.name, c.document, c.phone, c.active, c.created_at,
-           EXISTS (SELECT 1 FROM customer_account a WHERE a.customer_id = c.id) AS has_account
+           EXISTS (SELECT 1 FROM customer_account a WHERE a.customer_id = c.id) AS has_account,
+           (SELECT COUNT(*) FROM vehicles v WHERE v.customer_id = c.id) AS vehicle_count
     FROM customers c
     WHERE NULLIF(TRIM(p_search), '') IS NULL
        OR LOWER(c.name) LIKE '%' || LOWER(TRIM(p_search)) || '%'
@@ -73,13 +81,15 @@ RETURNS TABLE (
     phone VARCHAR,
     active BOOLEAN,
     created_at TIMESTAMP,
-    has_account BOOLEAN
+    has_account BOOLEAN,
+    vehicle_count BIGINT
 )
 LANGUAGE sql
 STABLE
 AS $$
     SELECT c.id, c.name, c.document, c.phone, c.active, c.created_at,
-           EXISTS (SELECT 1 FROM customer_account a WHERE a.customer_id = c.id) AS has_account
+           EXISTS (SELECT 1 FROM customer_account a WHERE a.customer_id = c.id) AS has_account,
+           (SELECT COUNT(*) FROM vehicles v WHERE v.customer_id = c.id) AS vehicle_count
     FROM customers c
     WHERE c.active = TRUE
       AND RIGHT(regexp_replace(c.phone, '\D', '', 'g'), 8)

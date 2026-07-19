@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { STATUS_LABEL, formatDate } from '../../../data/labels';
+import { formatDate } from '../../../data/labels';
 
 export default function VehicleCard({ vehicle }) {
   const navigate = useNavigate();
@@ -21,8 +21,8 @@ export default function VehicleCard({ vehicle }) {
         </span>
         {vehicle.lastOrder && (
           <span>
-            Último: {STATUS_LABEL[vehicle.lastOrder.status]} ·{' '}
-            {formatDate(vehicle.lastOrder.updatedAt)}
+            Último: {vehicle.lastOrder.number || 'OS'}
+            {vehicle.lastOrder.updatedAt ? ` · ${formatDate(vehicle.lastOrder.updatedAt)}` : ''}
           </span>
         )}
       </div>

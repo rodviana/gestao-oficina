@@ -1,27 +1,31 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext';
 import {
+  getCustomerSummary,
   getOrdersByCustomerId,
-  getVehiclesByCustomerId,
-  splitActiveAndHistory,
 } from '../../../data/tracking';
 
-/** Aggregates the logged-in customer's orders and vehicles for account screens. */
+const EMPTY_SUMMARY = {
+  vehicleCount: 0,
+  activeOrderCount: 0,
+  historyOrderCount: 0,
+  totalOrderCount: 0,
+};
+
+/** Carrega resumo + OS ativas + últimos serviços para a home da conta. */
 export function useCustomerPortfolio() {
   const { customer } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [orders, setOrders] = useState([]);
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [active, setActive] = useState([]);
-  const [history, setHistory] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  const [recentHistory, setRecentHistory] = useState([]);
 
   useEffect(() => {
     if (!customer) {
-      setOrders([]);
+      setSummary(EMPTY_SUMMARY);
       setActive([]);
-      setHistory([]);
-      setVehicles([]);
+      setRecentHistory([]);
       setLoading(false);
       return undefined;
     }
@@ -32,14 +36,15 @@ export function useCustomerPortfolio() {
       setLoading(true);
       setError(null);
       try {
-        const nextOrders = await getOrdersByCustomerId();
-        const split = splitActiveAndHistory(nextOrders);
-        const nextVehicles = await getVehiclesByCustomerId(nextOrders);
+        const [nextSummary, activePage, historyPage] = await Promise.all([
+          getCustomerSummary(),
+          getOrdersByCustomerId({ statusGroup: 'ACTIVE', page: 0 }),
+          getOrdersByCustomerId({ statusGroup: 'HISTORY', page: 0, pageSize: 3 }),
+        ]);
         if (cancelled) return;
-        setOrders(nextOrders);
-        setActive(split.active);
-        setHistory(split.history);
-        setVehicles(nextVehicles);
+        setSummary(nextSummary);
+        setActive(activePage.items);
+        setRecentHistory(historyPage.items);
       } catch (err) {
         if (!cancelled) {
           setError(err.message || 'Erro ao carregar seus dados.');
@@ -55,5 +60,5 @@ export function useCustomerPortfolio() {
     };
   }, [customer]);
 
-  return { customer, loading, error, orders, active, history, vehicles };
+  return { customer, loading, error, summary, active, recentHistory };
 }
